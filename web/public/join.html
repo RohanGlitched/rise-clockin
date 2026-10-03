@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rise Invite</title>
+<meta name="description" content="A friend invited you to a Rise pact: wake up on time, clock in on Solana, or pay the pot.">
+<meta name="theme-color" content="#0e1430">
+<link rel="icon" href="/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Doto:wght@700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .join { position: relative; z-index: 2; max-width: 560px; margin: 0 auto; padding: 10px 0 150px; }
+  .join h1 { font-size: clamp(36px, 8vw, 54px); }
+  .join .card { margin-top: 26px; }
+  .facts { display: flex; gap: 26px; margin-top: 22px; flex-wrap: wrap; }
+  .facts b { display: block; font-family: "Doto", monospace; font-weight: 900; font-size: 26px; color: var(--sun); }
+  .facts span { font-size: 13px; color: var(--mist); }
+</style>
+</head>
+<body>
+<header class="sky" style="min-height:100vh">
+  <div class="stars"></div><div class="sun"></div>
+  <svg class="ridge" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 60 C150 20 260 70 420 40 S700 10 860 50 1100 30 1200 45 V120 H0Z" fill="#2a1c38"/>
+    <path d="M0 90 C200 60 320 100 520 78 S860 60 1000 85 1150 70 1200 80 V120 H0Z" fill="#120e22"/>
+  </svg>
+  <div class="wrap">
+    <nav><span class="dot"></span><b><a href="/" style="text-decoration:none">Rise</a></b></nav>
+    <div class="join" id="join"><p class="lede">Reading the pact from Solana…</p></div>
+  </div>
+</header>
+<script type="module">
+import { loadPact, timeCard, skr, escapeHtml } from "/rise.js";
+const el = document.getElementById("join");
+const address = location.pathname.split("/").filter(Boolean)[1] || "";
+try {
+  const p = await loadPact(address);
+  if (!p) throw new Error("missing");
+  document.title = `Join ${p.name} on Rise`;
+  el.innerHTML = `
+    <p class="note" style="color:var(--sun);margin:0 0 8px">You're invited</p>
+    <h1>${escapeHtml(p.name)}</h1>
+    <p class="lede">Wake up on time and clock in on Solana. Every morning you keep earns your stake back; every miss goes to the pot.</p>
+    <div class="facts"><div><b>${skr(p.stakePerDay)}</b><span>SKR a morning</span></div><div><b>${p.days}</b><span>mornings</span></div><div><b>${p.members.length}</b><span>in so far</span></div></div>
+    ${timeCard(p)}
+    <div class="cta"><a class="btn" href="rise://join/${p.address}">Open in Rise</a><a class="btn ghost" href="/rise.apk" download>Get the Android app</a></div>
+    <p class="note">New to Rise? Install the app, then open this link again.</p>`;
+} catch {
+  el.innerHTML = `<h1>This invite doesn't point to a pact.</h1><p class="lede">Ask your friend to send the link again, or <a href="/">see what Rise is</a>.</p>`;
+}
+</script>
+</body>
+</html>

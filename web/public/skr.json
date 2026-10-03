@@ -1,0 +1,6 @@
+{
+  "name": "Seeker (Rise devnet)",
+  "symbol": "SKR",
+  "description": "Test SKR for Rise on Solana devnet. It has no value; the Rise program drips it so anyone can try pacts.",
+  "image": "https://rise-clockin.vercel.app/skr.png"
+}

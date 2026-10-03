@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rise Alarm</title>
+<meta name="description" content="Rise is an Android alarm for Solana Seeker. Wake up and clock in on chain before your window closes, or your SKR is split among the friends who made it.">
+<meta name="theme-color" content="#0e1430">
+<meta property="og:title" content="Rise">
+<meta property="og:description" content="The alarm your friends are betting on. Clock in on Solana, or pay the pot.">
+<meta property="og:image" content="https://rise-clockin.vercel.app/og.png">
+<link rel="icon" href="/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Doto:wght@700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="sky">
+  <div class="stars"></div><div class="sun"></div>
+  <svg class="ridge" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 60 C150 20 260 70 420 40 S700 10 860 50 1100 30 1200 45 V120 H0Z" fill="#2a1c38"/>
+    <path d="M0 90 C200 60 320 100 520 78 S860 60 1000 85 1150 70 1200 80 V120 H0Z" fill="#120e22"/>
+  </svg>
+  <div class="wrap">
+    <nav><span class="dot"></span><b>Rise</b><span class="grow"></span><a class="small" href="#how">How it works</a><a class="small" href="#live">Live pacts</a></nav>
+    <div class="hero">
+      <div>
+        <h1>The alarm your friends are betting on.</h1>
+        <p class="lede">Wake up and clock in on Solana before your window closes. Sleep in, and your SKR is split among the friends who made it.</p>
+        <div class="cta">
+          <a class="btn" href="/rise.apk" download>Download for Android</a>
+          <a class="btn ghost" href="#live">See live pacts</a>
+        </div>
+        <p class="note">Built for Solana Seeker; runs on any Android 9 or newer. Uses Solana devnet and test SKR, so trying it costs nothing.</p>
+      </div>
+      <div class="phone"><img src="/shot-today.jpg" alt="Rise on a phone: tomorrow's alarm in dot-matrix digits above the pact's time card"></div>
+    </div>
+  </div>
+</header>
+
+<section class="band" id="how">
+  <div class="wrap">
+    <h2>An alarm with something on the line.</h2>
+    <p class="sub">Snooze wins because nothing is at stake. Rise puts your SKR and your friends behind every morning.</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Set your wake time</h3><p>Drag the sun around the dial and pick a mission: find daylight, walk 30 steps, or scan the code by your kettle.</p></div>
+      <div class="step"><div class="n">2</div><h3>Make a pact</h3><p>Friends lock SKR for each morning. Your wake window opens 30 minutes before your time and closes after a short grace period.</p></div>
+      <div class="step"><div class="n">3</div><h3>Clock in on chain</h3><p>Finish the mission, sign once, and Solana's clock stamps your card. Missed mornings fill the pot, split by mornings kept.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="live" style="padding-top:20px">
+  <div class="wrap">
+    <h2>Live from Solana devnet</h2>
+    <p class="sub">These time cards are read straight from the Rise program as the page loads. Blue ink is on time, red is late, holes are missed mornings.</p>
+    <div class="live" id="cards"><p class="empty">Reading pacts from devnet…</p></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap row">
+    <span>Rise program: <a class="mono" id="prog" href="#"></a></span>
+    <span>Made for the Solana Mobile hackathon.</span>
+  </div>
+</footer>
+
+<script type="module">
+import { loadPacts, timeCard, PROGRAM } from "/rise.js";
+const prog = document.getElementById("prog");
+prog.textContent = PROGRAM;
+prog.href = `https://explorer.solana.com/address/${PROGRAM}?cluster=devnet`;
+const el = document.getElementById("cards");
+try {
+  const pacts = (await loadPacts()).filter((p) => p.members.length).sort((a, b) => b.members.length - a.members.length).slice(0, 6);
+  el.innerHTML = pacts.length
+    ? pacts.map((p) => `<a href="/join/${p.address}" style="text-decoration:none">${timeCard(p)}</a>`).join("")
+    : `<p class="empty">No pacts yet. Be the first.</p>`;
+} catch {
+  el.innerHTML = `<p class="empty">Devnet didn't answer. Refresh in a moment.</p>`;
+}
+</script>
+</body>
+</html>
