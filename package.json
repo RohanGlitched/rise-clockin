@@ -1,0 +1,27 @@
+{
+  "name": "rise-program",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "bash scripts/test.sh",
+    "build:scripts": "bash scripts/build-scripts.sh"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "0.31.1",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.6",
+    "@types/chai": "^4.3.20",
+    "@types/mocha": "^10.0.10",
+    "anchor-bankrun": "^0.5.0",
+    "chai": "^4.5.0",
+    "esbuild": "^0.25.12",
+    "mocha": "^10.8.2",
+    "solana-bankrun": "^0.4.0",
+    "ts-mocha": "^10.1.0",
+    "typescript": "^5.9.3",
+    "@solana/spl-token-metadata": "^0.1.6"
+  }
+}
