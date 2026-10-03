@@ -108,25 +108,27 @@ Payouts always sum to exactly what was deposited, so the vault can pay every cla
 
 ```mermaid
 flowchart TB
-    subgraph Phone["Android app · Kotlin + Compose"]
-        direction LR
-        AL["Alarm service<br/>sunrise · ring · spoken stakes"] --> MS["Missions<br/>light · steps · QR"] --> WA["Wallet<br/>MWA / Seed Vault or practice key"]
+    subgraph Phone["Android app (Kotlin + Compose)"]
+        AL["Alarm service<br/>sunrise, ring, spoken stakes"]
+        MS["Missions<br/>light, steps, QR"]
+        WA["Wallet<br/>MWA, Seed Vault or practice key"]
     end
     subgraph Chain["Solana devnet"]
-        direction LR
-        PR["Rise program (Anchor)<br/>pacts · windows · payouts"] <--> SKR["Test SKR<br/>Token-2022 + metadata"]
+        PR["Rise program (Anchor)<br/>pacts, windows, payouts"]
+        SKR["Test SKR<br/>Token-2022 with metadata"]
     end
     subgraph Web["rise-clockin.vercel.app"]
-        direction LR
-        SITE["Landing + invite pages<br/>read devnet directly"]
-        SOL["/api/sol<br/>fee top-ups"]
-        SGT["/api/seeker<br/>SIWS + Genesis Token check"]
+        SITE["Landing and invite pages"]
+        SOL["Faucet API<br/>devnet SOL for fees"]
+        SGT["Seeker API<br/>SIWS + Genesis Token check"]
     end
-    WA -- "create_pact · join · clock_in · claim" --> PR
-    Phone -. "invite links" .-> SITE
-    Phone -- "devnet SOL" --> SOL
-    Phone -- "Sign in with Solana" --> SGT
-    SGT -. "mainnet lookup" .-> MAIN[("Seeker Genesis Token")]
+    AL --> MS --> WA
+    WA -->|create_pact, join, clock_in, claim| PR
+    PR <--> SKR
+    WA -.->|invite links| SITE
+    WA -->|fee top-ups| SOL
+    WA -->|Sign in with Solana| SGT
+    SGT -.->|mainnet lookup| MAIN[("Seeker Genesis Token")]
 ```
 
 <br>
