@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -38,7 +38,7 @@ jobs:
       - name: Build program (SBF)
         run: cargo build-sbf --manifest-path programs/rise/Cargo.toml --sbf-out-dir target/deploy
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -52,7 +52,12 @@ jobs:
         run: |
           mkdir -p tests/fixtures
           cp target/deploy/rise.so tests/fixtures/rise.so
-          npx ts-mocha -p ./tsconfig.json -t 1000000 tests/rise.ts
+          set -o pipefail
+          npx ts-mocha -p ./tsconfig.json -t 1000000 tests/rise.ts 2>&1 | grep -v "DEBUG solana_runtime" | tee test-output.txt || {
+            echo "::error title=Program tests::$(tail -n 40 test-output.txt | sed ':a;N;$!ba;s/%/%25/g;s//%0D/g;s/
+/%0A/g')"
+            exit 1
+          }
 
       - name: Program size
         run: ls -l target/deploy/rise.so
@@ -65,9 +70,9 @@ jobs:
       run:
         working-directory: android
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -94,9 +99,9 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
