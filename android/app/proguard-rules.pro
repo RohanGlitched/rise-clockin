@@ -1,0 +1,12 @@
+-keep class org.sol4k.** { *; }
+-keep class com.solana.** { *; }
+-keep class com.solanamobile.** { *; }
+-keepattributes *Annotation*, InnerClasses, Signature
+-dontwarn org.slf4j.**
+-dontwarn org.bouncycastle.**
+-keepclassmembers class kotlinx.serialization.json.** { *** Companion; }
+-keep,includedescriptorclasses class app.rise.clockin.**$$serializer { *; }
+-keepclassmembers class app.rise.clockin.** { *** Companion; kotlinx.serialization.KSerializer serializer(...); }
+-dontwarn com.ditchoom.buffer.**
+-keep class com.funkatronics.** { *; }
+-keep class com.google.mlkit.** { *; }
