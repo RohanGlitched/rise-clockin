@@ -359,7 +359,7 @@ private fun ColumnScope.StampedStage(r: ClockInResult, onStamp: () -> Unit, onCl
     ) {
         Box(Modifier.height(150.dp), contentAlignment = Alignment.Center) {
             if (stamped) Stamp(
-                t.format(DateTimeFormatter.ofPattern("H:mm:ss")),
+                t.format(DateTimeFormatter.ofPattern("HH:mm:ss")),
                 t.format(DateTimeFormatter.ofPattern("EEEE d MMMM")),
                 late = late,
             )
