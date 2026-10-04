@@ -11,7 +11,7 @@
 [![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF?logo=kotlin&logoColor=white)](android/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-ffd166.svg)](LICENSE)
 
-**[Download the APK](https://rise-clockin.vercel.app/rise.apk)** · **[Website & live pacts](https://rise-clockin.vercel.app)** · **[Program on Explorer](https://explorer.solana.com/address/6kQL7PccHpE7yUrsq5TgxFgQc7K7FVbUJShRUPbWfCdS?cluster=devnet)** · **[Pitch deck](https://rise-clockin.vercel.app/rise-pitch-deck.pdf)**
+**[Download the APK](https://rise-clockin.vercel.app/rise.apk)** ([release v1.1.0 with checksum](https://github.com/RohanGlitched/rise-clockin/releases/tag/v1.1.0)) · **[Website & live pacts](https://rise-clockin.vercel.app)** · **[Program on Explorer](https://explorer.solana.com/address/6kQL7PccHpE7yUrsq5TgxFgQc7K7FVbUJShRUPbWfCdS?cluster=devnet)** · **[Pitch deck](https://rise-clockin.vercel.app/rise-pitch-deck.pdf)**
 
 **[Demo video (3 min)](https://youtu.be/cIDrxsqdEnc)** · **[Verify it yourself](VERIFY.md)** · **[Settlement proof on devnet](docs/SETTLEMENT.md)** · **[Security & anti-cheat](SECURITY.md)**
 
