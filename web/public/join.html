@@ -58,7 +58,7 @@ try {
       ? `It ran ${start} to ${end}. Everyone who kept mornings can collect their payout in the app. Start your own pact to go again.`
       : `Wake up on time and clock in on Solana. Every morning you keep earns your stake back; every miss goes to the pot. Joining now locks ${skr(p.stakePerDay * left)} test SKR for the ${plural(left, "morning")} left.`}</p>
     <div class="facts"><div><b>${skr(p.stakePerDay)}</b><span>SKR a morning</span></div><div><b>${p.days}</b><span>mornings · ${start} to ${end}</span></div><div><b>${p.members.length}</b><span>${over ? "took part" : "in so far"}</span></div></div>
-    ${timeCard(p)}
+    ${timeCard(p, Date.now() / 1000, 30)}
     <div class="cta">${over ? `<a class="btn" href="/">See live pacts</a>` : `<a class="btn" href="rise://join/${p.address}">Open in Rise</a>`}<a class="btn ghost" href="/rise.apk" download>Get the Android app</a></div>
     <p class="note">${over ? "Devnet and test SKR, so nothing here cost real money." : "New to Rise? Install the app, choose a wallet or the practice wallet, grab test SKR, then open this link again and tap Join. Devnet and test SKR: free."}</p>
     <div class="qr" style="display:flex"><img src="/qr-apk.svg" alt="QR code that downloads the Rise APK" width="96" height="96"><div><b>Reading this on a laptop?</b><span>Point your phone's camera here to install Rise, then open this page on the phone.</span></div></div>`;

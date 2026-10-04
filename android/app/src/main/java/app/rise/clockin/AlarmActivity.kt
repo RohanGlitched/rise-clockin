@@ -270,7 +270,11 @@ private fun ColumnScope.RingingStage(rehearsal: Boolean, onSlide: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     up.take(4).forEachIndexed { i, m -> Avatar(m.avatar, 34.dp, Modifier.offset(x = (-10 * i).dp), ring = Rise.Apricot) }
                     Spacer(Modifier.width(6.dp))
-                    Text(if (up.size == 1) "${up[0].name} is already up" else "${up[0].name} and ${up.size - 1} more are up", style = RiseType.bodyStrong, color = Rise.Ivory)
+                    Text(
+                        if (up.size == 1) "${up[0].name} is already up" else "${up[0].name} and ${up.size - 1} more are up",
+                        style = RiseType.bodyStrong, color = Rise.Ivory,
+                        modifier = Modifier.offset(x = (-10 * (minOf(up.size, 4) - 1)).dp),
+                    )
                 }
             }
         }
@@ -385,7 +389,13 @@ private fun ColumnScope.StampedStage(r: ClockInResult, onStamp: () -> Unit, onCl
         Box(Modifier.fillMaxWidth().height(1.dp).background(Rise.CardRule))
         Spacer(Modifier.height(16.dp))
         if (r.rehearsal) {
-            Text("No pact window is open right now, so nothing went on chain. On a pact morning this stamp is a Solana transaction.", style = RiseType.body, color = Rise.InkBlue)
+            val nowSec = System.currentTimeMillis() / 1000
+            val keptToday = Store.state.value.pacts.any { v -> v.me?.let { me -> val d = v.pact.dayIndex(nowSec); d >= me.firstDay && me.isIn(d) } == true }
+            Text(
+                if (keptToday) "You already clocked in today, so this was a practice run and nothing went on chain."
+                else "No pact window is open right now, so nothing went on chain. On a pact morning this stamp is a Solana transaction.",
+                style = RiseType.body, color = Rise.InkBlue,
+            )
         } else {
             val kept = r.pacts.sumOf { it.pact.stakePerDay }
             val streak = r.pacts.maxOf { it.me?.streak ?: 0 }
@@ -394,7 +404,11 @@ private fun ColumnScope.StampedStage(r: ClockInResult, onStamp: () -> Unit, onCl
             Text(if (streak == 1) "First morning of your streak." else "$streak mornings in a row.", style = RiseType.body, color = Rise.InkBlue.copy(alpha = 0.8f))
             proof?.let { pr ->
                 Spacer(Modifier.height(10.dp))
-                Text("${pr.summary}. Proof confidence: ${pr.confidence.label}, recorded on chain.", style = RiseType.small, color = Rise.InkBlue.copy(alpha = 0.75f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Text(
+                    if (pr.confidence.label.lowercase() == "low") "${pr.summary}. Proof recorded on chain."
+                    else "${pr.summary}. Proof confidence: ${pr.confidence.label}, recorded on chain.",
+                    style = RiseType.small, color = Rise.InkBlue.copy(alpha = 0.75f), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                )
             }
             r.signature?.let { sig ->
                 TextAction("See the proof on Solana", { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.explorerTx(sig)))) }, color = Rise.InkRed)

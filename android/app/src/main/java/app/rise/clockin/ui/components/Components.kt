@@ -89,6 +89,8 @@ fun GhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier
         modifier
             .defaultMinSize(minHeight = 52.dp)
             .clip(RoundedCornerShape(26.dp))
+            // A little night behind the glass keeps the label readable over the sun.
+            .background(Rise.NightDeep.copy(alpha = 0.35f))
             .border(1.dp, Rise.Ivory.copy(alpha = if (enabled) 0.45f else 0.15f), RoundedCornerShape(26.dp))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = 22.dp, vertical = 14.dp),

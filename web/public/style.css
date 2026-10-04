@@ -93,6 +93,7 @@ button.link { background: none; border: 0; color: var(--sun); font: inherit; tex
 .av { display: inline-block; width: 14px; height: 14px; border-radius: 50%; margin-right: 6px; vertical-align: -2px; }
 .hole { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, var(--deep), var(--night)); box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .25); vertical-align: middle; }
 .hole.sm { width: 10px; height: 10px; margin-right: 5px; }
+.card .more { font-size: 12px; opacity: .6; margin-top: 8px; }
 .card-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 10px; font-size: 11px; }
 .card-foot .k { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
 .k.on { background: var(--ink); }

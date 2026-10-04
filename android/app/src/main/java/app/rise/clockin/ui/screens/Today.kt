@@ -94,6 +94,10 @@ fun TodayTab(nav: Nav) {
     // Lead with the pact whose window is open, else the one with the most people in it.
     val primary = open.firstOrNull() ?: active.maxByOrNull { it.members.size } ?: state.pacts.firstOrNull()
     val nextWake = AlarmScheduler.nextWake(profile) / 1000
+    val keptToday = active.any { v -> v.me?.let { me -> val d = v.pact.dayIndex(now); d >= me.firstDay && me.isIn(d) } == true }
+    val nextIsToday = java.time.Instant.ofEpochSecond(nextWake).atZone(java.time.ZoneId.systemDefault()).toLocalDate() == java.time.LocalDate.now()
+    val whenText = if (nextWake - now > 12 * 3600) "tomorrow at ${localTime(nextWake)}" else "in ${untilText(nextWake - now)}"
+    val coachDay = if (nextIsToday) "today" else "tomorrow"
     val streak = state.pacts.maxOfOrNull { it.me?.streak ?: 0 } ?: 0
     val finishedUnclaimed = state.pacts.filter { it.pact.isOver(now) && it.me?.claimed == false }
     val coach by Store.coach.collectAsState()
@@ -126,7 +130,7 @@ fun TodayTab(nav: Nav) {
             }
             if (profile.alarmOn) {
                 Text(
-                    "Rings in ${untilText(nextWake - now)}. ${profile.mission.title} to stop it.",
+                    if (keptToday && open.isEmpty()) "Today is kept. Next alarm $whenText." else "Rings $whenText. ${profile.mission.title} to stop it.",
                     style = RiseType.body, color = Rise.Ivory.copy(alpha = 0.85f),
                 )
             }
@@ -136,7 +140,7 @@ fun TodayTab(nav: Nav) {
             }
             coach?.let { c ->
                 Spacer(Modifier.height(18.dp))
-                CoachPanel(c, profile.mission)
+                CoachPanel(c, profile.mission, coachDay)
             }
 
             // Window open right now: the most important thing on the screen.
@@ -247,7 +251,8 @@ fun CardSkeleton() {
 
 /** Rise Coach: tomorrow's predicted risk, why, and the difficulty it chose. */
 @Composable
-fun CoachPanel(c: app.rise.clockin.ai.CoachReport, mission: app.rise.clockin.data.Mission? = null) {
+fun CoachPanel(c: app.rise.clockin.ai.CoachReport, mission: app.rise.clockin.data.Mission? = null, day: String = "tomorrow") {
+    val Day = day.replaceFirstChar { it.uppercase() }
     var open by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     val pct = (c.risk * 100).toInt()
     val tone = when (c.difficulty) {
@@ -263,21 +268,21 @@ fun CoachPanel(c: app.rise.clockin.ai.CoachReport, mission: app.rise.clockin.dat
             Text("Rise Coach", style = RiseType.bodyStrong, color = Rise.Sun)
             Spacer(Modifier.weight(1f))
             Box(Modifier.clip(RoundedCornerShape(12.dp)).background(tone.copy(alpha = 0.2f)).padding(horizontal = 10.dp, vertical = 4.dp)) {
-                Text("Tomorrow: ${c.difficulty.label}", style = RiseType.small, color = tone)
+                Text("$Day: ${c.difficulty.label}", style = RiseType.small, color = tone)
             }
         }
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.Bottom) {
             Text("$pct%", style = RiseType.amount.copy(fontSize = androidx.compose.ui.unit.TextUnit(34f, androidx.compose.ui.unit.TextUnitType.Sp)), color = Rise.Ivory)
             Spacer(Modifier.width(8.dp))
-            Text("chance you oversleep tomorrow", style = RiseType.small, color = Rise.Mist, modifier = Modifier.padding(bottom = 6.dp))
+            Text("chance you oversleep $day", style = RiseType.small, color = Rise.Mist, modifier = Modifier.padding(bottom = 6.dp))
         }
         Spacer(Modifier.height(6.dp))
-        Text(c.headline, style = RiseType.body, color = Rise.Ivory.copy(alpha = 0.9f))
+        Text(c.headline.replace("Tomorrow", Day).replace("tomorrow", day), style = RiseType.body, color = Rise.Ivory.copy(alpha = 0.9f))
         if (open) {
             Spacer(Modifier.height(10.dp))
             c.factors.forEach { f ->
-                Text("${if (f.weight > 0) "Raises" else "Lowers"} risk: ${f.text}", style = RiseType.small, color = Rise.Mist)
+                Text("${if (f.weight > 0) "Raises" else "Lowers"} risk: ${f.text.replace("Tomorrow", Day).replace("tomorrow", day)}", style = RiseType.small, color = Rise.Mist)
             }
             Spacer(Modifier.height(6.dp))
             val target = when (mission?.id) {
@@ -288,7 +293,7 @@ fun CoachPanel(c: app.rise.clockin.ai.CoachReport, mission: app.rise.clockin.dat
                 else -> "${c.difficulty.steps} steps, ${c.difficulty.lux} lux or a ${(c.difficulty.visionConfidence * 100).toInt()}% vision match"
             }
             Text(
-                "Tomorrow's mission: $target. Sunrise starts ${c.difficulty.sunriseLead} min early.",
+                "$Day's mission: $target. Sunrise starts ${c.difficulty.sunriseLead} min early.",
                 style = RiseType.small, color = Rise.Ivory.copy(alpha = 0.8f),
             )
             Spacer(Modifier.height(6.dp))

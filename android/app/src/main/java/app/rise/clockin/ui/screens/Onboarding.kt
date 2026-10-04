@@ -240,7 +240,7 @@ private fun ColumnScope.MissionStep(initial: Mission, next: () -> Unit) {
             Mission.entries.forEach { m -> MissionOption(m, m == mission) { mission = m } }
         }
     }
-    SunButton("Use ${mission.title.lowercase()}", {
+    SunButton("Continue with ${mission.title}", {
         Store.updateProfile { it.copy(mission = mission) }
         next()
     }, Modifier.fillMaxWidth().padding(vertical = 16.dp))

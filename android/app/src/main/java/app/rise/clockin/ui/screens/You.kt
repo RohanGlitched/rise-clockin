@@ -106,7 +106,7 @@ fun YouTab(nav: Nav) {
                 Column {
                     Text(profile.name.ifBlank { "You" }, style = RiseType.title, color = Rise.Ivory)
                     if (profile.seekerMint != null) SeekerBadge()
-                    else Text("$totalKept mornings kept, best streak $best", style = RiseType.small, color = Rise.Mist)
+                    else Text("$totalKept ${if (totalKept == 1) "morning" else "mornings"} kept, best streak $best", style = RiseType.small, color = Rise.Mist)
                 }
             }
 

@@ -116,7 +116,7 @@ const AVATAR = ["#FFD166", "#F2A0A1", "#7FC8A9", "#9DB4FF", "#FFB877", "#C9A7F5"
 export const avatarColor = (i) => AVATAR[((i % 8) + 8) % 8];
 
 /** Renders a pact as a manila time card (same rules as the app). */
-export function timeCard(p, now = Date.now() / 1000) {
+export function timeCard(p, now = Date.now() / 1000, maxRows = 8) {
   const over = isOver(p, now);
   const today = Math.max(-1, Math.min(dayIndex(p, now), p.days - 1));
   // Pacts with short test "days" would repeat the same calendar date; label those by morning.
@@ -124,7 +124,9 @@ export function timeCard(p, now = Date.now() / 1000) {
   const end = Math.max(Math.min(Math.max(today, 0) + 3, p.days - 1), Math.min(6, p.days - 1));
   const start = Math.max(0, end - 6);
   const days = []; for (let d = start; d <= end; d++) days.push(d);
-  const rows = [...p.members].sort((a, b) => b.hits - a.hits || b.streak - a.streak).slice(0, 8);
+  const ranked = [...p.members].sort((a, b) => b.hits - a.hits || b.streak - a.streak);
+  const rows = ranked.slice(0, maxRows);
+  const more = ranked.length - rows.length;
   const head = days.map((d) => {
     const dt = new Date((p.startTs + d * p.daySecs + p.daySecs / 2) * 1000);
     const mark = d === today && !over ? "today" : "";
@@ -146,6 +148,7 @@ export function timeCard(p, now = Date.now() / 1000) {
   const sub = d < 0 ? "Starts soon" : over ? `Finished after ${plural(p.days, "morning")}` : `Morning ${d + 1} of ${p.days}, ${skr(p.stakePerDay)} SKR a morning`;
   return `<div class="card"><div class="card-top"><div><h3>${escapeHtml(p.name)}</h3><p>${sub}</p></div></div>
     <table><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table>
+    ${more > 0 ? `<p class="more">and ${plural(more, "more member")}</p>` : ""}
     <div class="card-foot"><span><i class="k on"></i>On time</span><span><i class="k late"></i>Late</span><span><span class="hole sm"></span>Missed</span><b>Pot ${skr(pot(p, now))} SKR</b></div></div>`;
 }
 

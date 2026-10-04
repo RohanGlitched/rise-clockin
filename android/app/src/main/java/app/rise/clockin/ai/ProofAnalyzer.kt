@@ -39,7 +39,8 @@ class ProofTrace {
                 val values = lux.map { it.second }
                 if (values.isNotEmpty()) {
                     val distinct = values.map { (it * 10).toInt() }.toSet().size
-                    val first = values.take(5).average()
+                    // The light sensor reports on change, so the first reading is the room as the mission began.
+                    val first = values.first().toDouble()
                     val peak = values.max()
                     summary = "Light rose from ${first.toInt()} to ${peak.toInt()} lux"
                     if (distinct < 6) { s -= 0.45; flags += "Light readings came in a few exact steps, like typed-in values" }
