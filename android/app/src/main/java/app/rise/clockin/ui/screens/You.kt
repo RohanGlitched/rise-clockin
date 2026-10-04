@@ -95,7 +95,7 @@ fun YouTab(nav: Nav) {
         }
     }
 
-    SkyBackground(dawnForTime(), horizon = 1.02f, sunX = 0.15f) {
+    SkyBackground(dawnForTime(), horizon = 1.3f, sunX = 0.15f) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).windowInsetsPadding(WindowInsets.statusBars).padding(horizontal = 20.dp),
         ) {

@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls", "delegate_permission/common.get_login_creds"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.rise.clockin",
+      "sha256_cert_fingerprints": ["12:17:28:DD:77:E1:C3:AA:E4:4C:71:D7:37:09:BD:16:1A:9D:A7:41:92:38:29:1F:7B:3A:42:A4:D7:17:79:47"]
+    }
+  }
+]

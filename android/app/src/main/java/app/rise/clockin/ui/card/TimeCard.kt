@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import app.rise.clockin.data.PactView
 import app.rise.clockin.solana.Member
@@ -159,7 +160,7 @@ fun TimeCard(view: PactView, now: Long, modifier: Modifier = Modifier, highlight
     }
 }
 
-private val NAME_W = 82.dp
+private val NAME_W = 74.dp
 private val ROW_H = 36.dp
 
 fun cardSubtitle(p: Pact, now: Long): String {
@@ -181,7 +182,8 @@ private fun Cell(p: Pact, m: Member, d: Int, now: Long, seed: Int) {
             val r = Random(seed + d * 31 + m.owner.hashCode())
             Text(
                 cardTime(target + delta),
-                fontFamily = Doto, fontWeight = FontWeight(900), fontSize = 12.5.sp, maxLines = 1,
+                fontFamily = Doto, fontWeight = FontWeight(900), fontSize = 10.5.sp, maxLines = 1, softWrap = false,
+                letterSpacing = (-0.04).em,
                 color = (if (delta > 0) Rise.InkRed else Rise.InkBlue).copy(alpha = 0.78f + r.nextFloat() * 0.2f),
                 modifier = Modifier.rotate(r.nextFloat() * 6f - 3f).semantics { contentDescription = "Clocked in at ${cardTime(target + delta)}" },
                 textAlign = TextAlign.Center,

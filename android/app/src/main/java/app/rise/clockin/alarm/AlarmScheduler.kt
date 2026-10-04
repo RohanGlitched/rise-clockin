@@ -41,11 +41,17 @@ object AlarmScheduler {
         set(context, wakeAt - p.sunriseLead * 60_000L, wakeAt, rehearsal = false)
     }
 
-    /** A practice run: a short sunrise, then the real ring and mission. */
-    fun rehearse(context: Context, inSeconds: Int = 4, dawnSeconds: Int = 10) {
+    /**
+     * "Rehearse the alarm". When one of your pact windows is already open this is the real
+     * thing: it rings with the live stakes and the clock-in goes on chain. Otherwise it's a
+     * practice run with nothing at stake.
+     */
+    fun rehearse(context: Context) {
+        val live = app.rise.clockin.data.Store.openForClockIn().isNotEmpty()
         val now = System.currentTimeMillis()
-        val fire = now + inSeconds * 1000L
-        set(context, fire, fire + dawnSeconds * 1000L, rehearsal = true, requestCode = REQ + 1)
+        val fire = now + (if (live) 20_000L else 4_000L)
+        val dawn = if (live) 25_000L else 10_000L
+        set(context, fire, fire + dawn, rehearsal = !live, requestCode = REQ + 1)
     }
 
     private fun set(context: Context, fireAt: Long, wakeAt: Long, rehearsal: Boolean, requestCode: Int = REQ) {

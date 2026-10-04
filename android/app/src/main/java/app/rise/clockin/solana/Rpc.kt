@@ -60,7 +60,8 @@ class Rpc(private val url: String) {
     }
 
     suspend fun latestBlockhash(): String =
-        ((call("getLatestBlockhash", JSONArray().put(JSONObject().put("commitment", "confirmed"))) as JSONObject)
+        // Finalized: every node behind a load-balanced RPC already knows it.
+        ((call("getLatestBlockhash", JSONArray().put(JSONObject().put("commitment", "finalized"))) as JSONObject)
             .getJSONObject("value")).getString("blockhash")
 
     suspend fun balance(address: String): Long =
@@ -116,12 +117,31 @@ class Rpc(private val url: String) {
         }
     }
 
+    /** Simulates without checking signatures, so failures surface with program logs before any wallet prompt. */
+    suspend fun simulate(tx: ByteArray) {
+        val b64 = Base64.encodeToString(tx, Base64.NO_WRAP)
+        val sim = call(
+            "simulateTransaction",
+            JSONArray().put(b64).put(
+                JSONObject().put("encoding", "base64").put("commitment", "confirmed")
+                    .put("sigVerify", false).put("replaceRecentBlockhash", true),
+            ),
+        ) as JSONObject
+        val value = sim.getJSONObject("value")
+        val err = value.opt("err")
+        if (err != null && err != JSONObject.NULL) {
+            val logsArr = value.optJSONArray("logs")
+            val logs = if (logsArr != null) List(logsArr.length()) { logsArr.getString(it) } else emptyList()
+            throw RpcException("Transaction failed: $err", logs)
+        }
+    }
+
     /** Simulates first so failures come back with program logs, then sends. */
     suspend fun send(tx: ByteArray): String {
         val b64 = Base64.encodeToString(tx, Base64.NO_WRAP)
         val sim = call(
             "simulateTransaction",
-            JSONArray().put(b64).put(JSONObject().put("encoding", "base64").put("commitment", "confirmed").put("sigVerify", false)),
+            JSONArray().put(b64).put(JSONObject().put("encoding", "base64").put("commitment", "confirmed").put("sigVerify", false).put("replaceRecentBlockhash", true)),
         ) as JSONObject
         val value = sim.getJSONObject("value")
         val err = value.opt("err")

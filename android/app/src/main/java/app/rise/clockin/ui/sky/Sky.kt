@@ -107,14 +107,18 @@ half4 main(float2 fc) {
 }
 """
 
-/** How far into sunrise the real sky is at this local time (0 at night, 1 by morning). */
+/**
+ * How far into sunrise the app's sky is at this local time: night until dawn, then a deep
+ * golden-hour tone through the day. Full sunrise is saved for the alarm and the clock-in.
+ */
 fun dawnForTime(t: LocalTime = LocalTime.now()): Float {
     val h = t.hour + t.minute / 60f
+    val day = 0.58f
     return when {
         h < 4.5f -> 0.05f
-        h < 7.5f -> 0.05f + (h - 4.5f) / 3f * 0.95f
-        h < 17.5f -> 1f
-        h < 20f -> 1f - (h - 17.5f) / 2.5f * 0.95f
+        h < 7.5f -> 0.05f + (h - 4.5f) / 3f * (day - 0.05f)
+        h < 17.5f -> day
+        h < 20f -> day - (h - 17.5f) / 2.5f * (day - 0.05f)
         else -> 0.05f
     }
 }

@@ -132,6 +132,7 @@ class AlarmService : Service() {
         // Refresh pacts so the spoken line knows who is already up.
         scope.launch(Dispatchers.IO) { runCatching { Store.refresh() } }
         ringJob = scope.launch {
+            if (!rehearsal && alreadyKeptToday()) { finish(); return@launch }
             val wait = wakeAt - System.currentTimeMillis()
             if (wait > 0) delay(wait)
             if (_state.value.phase == AlarmPhase.Sunrise) ring()
@@ -161,6 +162,19 @@ class AlarmService : Service() {
             .setSilent(!fullScreen)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
+    }
+
+    /** True when every pact morning due today is already clocked in (e.g. you woke before the alarm). */
+    private suspend fun alreadyKeptToday(): Boolean {
+        runCatching { Store.refresh() }
+        val now = System.currentTimeMillis() / 1000
+        val active = Store.state.value.pacts.filter { v -> v.me != null && !v.pact.isOver(now) }
+        if (active.isEmpty()) return false
+        return active.all { v ->
+            val me = v.me!!
+            val today = (me.firstDay until v.pact.days).firstOrNull { d -> now <= me.windowCloses(v.pact, d) && now >= me.windowOpens(v.pact, d) - 3600 }
+            today == null || me.isIn(today)
+        }
     }
 
     private fun startInForeground() {

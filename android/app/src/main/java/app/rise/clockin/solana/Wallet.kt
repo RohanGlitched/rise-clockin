@@ -62,7 +62,7 @@ class Wallet(context: Context, private val rpc: Rpc) {
     }
 
     suspend fun connectPhone(sender: ActivityResultSender): String {
-        val result = adapter.connect(sender)
+        val result = transactFresh(sender) { }
         val auth = when (result) {
             is TransactionResult.Success -> result.authResult
             is TransactionResult.NoWalletFound -> throw NoWalletException()
@@ -74,7 +74,7 @@ class Wallet(context: Context, private val rpc: Rpc) {
             .putString("kind", WalletKind.Phone.name)
             .putString("address", address)
             .putString("auth", auth.authToken)
-            .putString("label", account.accountLabel ?: auth.walletUriBase?.host ?: "Phone wallet")
+            .putString("label", walletName(auth, account.accountLabel))
             .apply()
         return address
     }
@@ -112,15 +112,10 @@ class Wallet(context: Context, private val rpc: Rpc) {
             }
             WalletKind.Phone -> {
                 val s = sender ?: throw IOException("Open Rise to sign with your wallet.")
-                val unsigned = shortVec(1) + ByteArray(64) + message
-                val result = adapter.transact(s) { signTransactions(arrayOf(unsigned)) }
-                when (result) {
-                    is TransactionResult.Success -> {
-                        result.authResult.authToken.let { prefs.edit().putString("auth", it).apply() }
-                        result.payload.signedPayloads.first()
-                    }
-                    is TransactionResult.NoWalletFound -> throw NoWalletException()
-                    is TransactionResult.Failure -> throw UserDeclinedException()
+                // Check it would succeed before bothering the wallet, then build it fresh inside the session.
+                rpc.simulate(shortVec(1) + ByteArray(64) + message)
+                return signAndSendWithWallet(s) {
+                    shortVec(1) + ByteArray(64) + TransactionMessage.newMessage(owner, rpc.latestBlockhash(), instructions).serialize()
                 }
             }
             null -> throw IOException("Connect a wallet first.")
@@ -128,6 +123,69 @@ class Wallet(context: Context, private val rpc: Rpc) {
         val sig = rpc.send(signed)
         rpc.confirm(sig)
         return sig
+    }
+
+    /**
+     * MWA 2.0: the wallet signs and submits (Phantom, Solflare, Seed Vault). Wallets that only
+     * sign get the older sign-then-we-send path.
+     */
+    private suspend fun signAndSendWithWallet(s: ActivityResultSender, build: suspend () -> ByteArray): String {
+        val sent = transactFresh(s) { signAndSendTransactions(arrayOf(build())) }
+        when (sent) {
+            is TransactionResult.Success -> {
+                prefs.edit().putString("auth", sent.authResult.authToken).apply()
+                val sig = Base58.encode(sent.payload.signatures.first())
+                rpc.confirm(sig)
+                return sig
+            }
+            is TransactionResult.NoWalletFound -> throw NoWalletException()
+            is TransactionResult.Failure -> {
+                android.util.Log.w("RiseWallet", "signAndSend failed: ${sent.message}", sent.e)
+                if (sent.e is InterruptedException || sent.message.contains("declin", true) || sent.message.contains("reject", true)) throw UserDeclinedException()
+            }
+        }
+        val signed = transactFresh(s) { signTransactions(arrayOf(build())) }
+        return when (signed) {
+            is TransactionResult.Success -> {
+                prefs.edit().putString("auth", signed.authResult.authToken).apply()
+                val sig = rpc.send(signed.payload.signedPayloads.first())
+                rpc.confirm(sig)
+                sig
+            }
+            is TransactionResult.NoWalletFound -> throw NoWalletException()
+            is TransactionResult.Failure -> {
+                android.util.Log.w("RiseWallet", "signTransactions failed: ${signed.message}", signed.e)
+                throw UserDeclinedException()
+            }
+        }
+    }
+
+    private fun walletName(auth: com.solana.mobilewalletadapter.clientlib.protocol.MobileWalletAdapterClient.AuthorizationResult, fallback: String?): String {
+        val host = auth.walletUriBase?.host.orEmpty() + " " + (fallback ?: "")
+        return when {
+            host.contains("phantom", true) -> "Phantom"
+            host.contains("solflare", true) -> "Solflare"
+            host.contains("backpack", true) -> "Backpack"
+            host.contains("seedvault", true) || host.contains("solanamobile", true) -> "Seed Vault"
+            else -> fallback ?: "Phone wallet"
+        }
+    }
+
+    /**
+     * Runs a wallet session; if the wallet rejects our saved auth token (e.g. it was issued
+     * before the app's identity was verified), forget it and authorize afresh once.
+     */
+    private suspend fun <T> transactFresh(
+        s: ActivityResultSender,
+        block: suspend com.solana.mobilewalletadapter.clientlib.AdapterOperations.(com.solana.mobilewalletadapter.clientlib.protocol.MobileWalletAdapterClient.AuthorizationResult) -> T,
+    ): TransactionResult<T> {
+        val first = adapter.transact(s, null, block)
+        val authFailed = first is TransactionResult.Failure &&
+            generateSequence<Throwable>(first.e) { it.cause }.any { it.message?.contains("authoriz", true) == true }
+        if (!authFailed || adapter.authToken == null) return first
+        adapter.authToken = null
+        prefs.edit().remove("auth").apply()
+        return adapter.transact(s, null, block)
     }
 
     private fun shortVec(n: Int): ByteArray = byteArrayOf(n.toByte())

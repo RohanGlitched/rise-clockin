@@ -173,9 +173,13 @@ private fun Morning(direct: Boolean, setBrightness: (Float) -> Unit, onStamp: ()
     var error by remember { mutableStateOf<String?>(null) }
     var switching by remember { mutableStateOf(false) }
 
-    // Follow the alarm service from sunrise to ringing.
+    // Follow the alarm service from sunrise to ringing; close if it stands down
+    // (for example, you already clocked in this morning).
+    var sawAlarm by remember { mutableStateOf(false) }
     LaunchedEffect(alarm.phase) {
+        if (alarm.phase != AlarmPhase.Idle) sawAlarm = true
         if (stage == Stage.Sunrise && alarm.phase == AlarmPhase.Ringing) stage = Stage.Ringing
+        if (sawAlarm && alarm.phase == AlarmPhase.Idle && (stage == Stage.Sunrise || stage == Stage.Ringing)) onClose()
     }
     BackHandler(enabled = stage != Stage.Stamped && stage != Stage.Failed) { /* the alarm can't be dismissed with back */ }
 

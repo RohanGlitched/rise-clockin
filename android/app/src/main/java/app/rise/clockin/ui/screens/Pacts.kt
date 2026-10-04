@@ -92,7 +92,7 @@ fun inviteUrl(pact: String) = "$SITE/join/$pact"
 
 @Composable
 fun DetailScaffold(title: String, nav: Nav, content: @Composable ColumnScope.() -> Unit) {
-    SkyBackground(dawnForTime(), horizon = 1.02f, sunX = 0.85f) {
+    SkyBackground(dawnForTime(), horizon = 1.3f, sunX = 0.85f) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)) {
             Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -126,7 +126,7 @@ fun DetailScaffold(title: String, nav: Nav, content: @Composable ColumnScope.() 
 fun PactsTab(nav: Nav) {
     val state by Store.state.collectAsState()
     val now = rememberNow(15_000)
-    SkyBackground(dawnForTime(), horizon = 1.02f, sunX = 0.2f) {
+    SkyBackground(dawnForTime(), horizon = 1.3f, sunX = 0.2f) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).windowInsetsPadding(WindowInsets.statusBars).padding(horizontal = 20.dp),
         ) {
@@ -220,8 +220,8 @@ fun PactScreen(address: String, justStarted: Boolean, nav: Nav) {
                     Spacer(Modifier.height(6.dp))
                     val wake = localTime(me.target(p, maxOf(me.firstDay, 0)))
                     Text(
-                        "You wake at $wake. ${me.hits} of ${p.days - me.firstDay} mornings kept, best streak ${me.bestStreak}. " +
-                            "If the pact ended now you'd get ${skr(me.projectedPayout(p))} SKR back from your ${skr(me.deposit)}.",
+                        "You wake at $wake. ${me.hits} of ${p.days - me.firstDay} mornings kept so far, best streak ${me.bestStreak}. " +
+                            "Each morning you keep earns ${skr(p.stakePerDay)} SKR back from your ${skr(me.deposit)}, plus your share of the pot when the pact ends.",
                         style = RiseType.body, color = Rise.Ivory.copy(alpha = 0.85f),
                     )
                     if (p.isOver(now)) {
