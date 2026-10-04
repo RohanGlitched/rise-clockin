@@ -390,7 +390,8 @@ private fun ColumnScope.StampedStage(r: ClockInResult, onStamp: () -> Unit, onCl
         Spacer(Modifier.height(16.dp))
         if (r.rehearsal) {
             val nowSec = System.currentTimeMillis() / 1000
-            val keptToday = Store.state.value.pacts.any { v -> v.me?.let { me -> val d = v.pact.dayIndex(nowSec); d >= me.firstDay && me.isIn(d) } == true }
+            val appState by Store.state.collectAsState()
+            val keptToday = appState.pacts.any { v -> v.me?.let { me -> val d = v.pact.dayIndex(nowSec); d >= me.firstDay && me.isIn(d) } == true }
             Text(
                 if (keptToday) "You already clocked in today, so this was a practice run and nothing went on chain."
                 else "No pact window is open right now, so nothing went on chain. On a pact morning this stamp is a Solana transaction.",
