@@ -16,7 +16,7 @@ Everything a judge needs to check the claims in the demo: deployed addresses, tr
 
 | File | SHA-256 |
 | --- | --- |
-| [`rise.apk`](https://rise-clockin.vercel.app/rise.apk) (signed release, 43 MB, Android 9+) | `e666ef124d3a633de21a95f8469573f6ec1ecf3f810eccbb789e45112a93c1c9` |
+| [`rise.apk`](https://rise-clockin.vercel.app/rise.apk) (v1.1.0, signed release, 43 MB, Android 9+) | `feea6d2c74f54d609fe7aa01f8c56833fca99ee8c1606f5913f23c459af01706` |
 
 Check it with `sha256sum rise.apk` (or `certutil -hashfile rise.apk SHA256` on Windows). The signing certificate's fingerprint is the one published in [`/.well-known/assetlinks.json`](https://rise-clockin.vercel.app/.well-known/assetlinks.json).
 

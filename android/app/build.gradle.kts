@@ -13,8 +13,8 @@ android {
         applicationId = "app.rise.clockin"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
         // Seeker and modern phones are arm64; x86_64 keeps the emulator working.
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         // -Prpc=http://10.0.2.2:8899 points a test build at a local validator.
