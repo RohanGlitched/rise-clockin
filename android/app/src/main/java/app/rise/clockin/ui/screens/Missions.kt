@@ -315,6 +315,8 @@ fun PhotoMission(onDone: () -> Unit, modifier: Modifier = Modifier, minConfidenc
     var seen by remember { mutableStateOf<List<Pair<String, Float>>>(emptyList()) }
     var held by remember { mutableFloatStateOf(0f) }
     var finished by remember { mutableStateOf(false) }
+    // Some phones take many seconds to open the camera; say so instead of showing a black box.
+    var live by remember { mutableStateOf(false) }
     val hasCamera = context.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
     if (!hasCamera) { MissingSensor("Rise needs the camera for this mission. Allow it in You, or switch mission."); return }
     val match = seen.firstOrNull { it.first in MORNING_LABELS && it.second >= minConfidence }
@@ -342,6 +344,7 @@ fun PhotoMission(onDone: () -> Unit, modifier: Modifier = Modifier, minConfidenc
                         analysis.setAnalyzer(Executors.newSingleThreadExecutor()) { proxy ->
                             val img = proxy.image
                             if (img == null || finished) { proxy.close(); return@setAnalyzer }
+                            if (!live) ContextCompat.getMainExecutor(ctx).execute { live = true }
                             // A bitmap keeps colour conversion consistent across camera HALs (some emit odd YUV strides).
                             val frame = runCatching { InputImage.fromBitmap(proxy.toBitmap(), proxy.imageInfo.rotationDegrees) }
                                 .getOrElse { InputImage.fromMediaImage(img, proxy.imageInfo.rotationDegrees) }
@@ -362,6 +365,14 @@ fun PhotoMission(onDone: () -> Unit, modifier: Modifier = Modifier, minConfidenc
                 },
                 modifier = Modifier.fillMaxSize(),
             )
+            if (!live) {
+                Text(
+                    "Starting the camera…",
+                    style = RiseType.body,
+                    color = Rise.Ivory.copy(alpha = 0.8f),
+                    modifier = Modifier.align(Alignment.Center),
+                )
+            }
         }
         Spacer(Modifier.height(14.dp))
         // What the on-device model sees, live.
