@@ -17,6 +17,7 @@ Everything a judge needs to check the claims in the demo: deployed addresses, tr
 | Moment | Transaction |
 | --- | --- |
 | Clock-in on a OnePlus 10T, signed in Phantom (10:02:56 IST, Oct 4) | [K64SPtnc…ksZJ](https://explorer.solana.com/tx/K64SPtncP1VEJNzDBca8dCiyDFuBddUu8HSpDnFMRz8Aip4oCfV9HJdMfkCt9P78eJKYJ8nMby5wrXxMjnvksZJ?cluster=devnet) |
+| Mint guard after the security review (`scripts/mint-guard.ts`): a test-SKR pact is created, a permanent-delegate mint is refused on chain | [created](https://explorer.solana.com/tx/54jEiCPF96HcP7GJXFcauCsU8MbGX42dGJpsgL3gy6jbtVLjrgj523k2xdRX1G7sEu69uyxPwMTV8p6NCQ8nTCm6?cluster=devnet), [refused](https://explorer.solana.com/tx/5vU82ct7gHBihTV5tJz63LY3xZBNufBmsFjwWYS83iT835CpZnfU2vziFyRUuuDs6ycnbsTrmt6UsDpxS9ZKs4KU?cluster=devnet) |
 | Full settlement run: lock, clock-ins, a late clock-in, missed mornings, a rejected early claim, final claims, a nobody-woke refund, and the vault reaching zero | [docs/SETTLEMENT.md](docs/SETTLEMENT.md) |
 
 ## Rebuild from source
@@ -30,7 +31,7 @@ mkdir -p tests/fixtures && cp target/deploy/rise.so tests/fixtures/
 TS_NODE_TRANSPILE_ONLY=1 npx ts-mocha -p ./tsconfig.json -t 1000000 tests/rise.ts
 ```
 
-Six tests run on Bankrun with a controllable clock: faucet rate limit, settings validation, a full 3-member pact (early, late and missed mornings, closed windows, double clock-in, streaks, exact payouts, vault drained to zero), late joiners, the nobody-woke refund, and clock-in authorisation. The same steps run in [CI](.github/workflows/ci.yml) on every push.
+Seven tests run on Bankrun with a controllable clock: faucet rate limit, settings validation, refusing mints that could move or freeze pact funds, a full 3-member pact (early, late and missed mornings, closed windows, double clock-in, streaks, exact payouts, vault drained to zero), late joiners, the nobody-woke refund, and clock-in authorisation. The same steps run in [CI](.github/workflows/ci.yml) on every push.
 
 **Android app** (JDK 21, Android SDK 36):
 

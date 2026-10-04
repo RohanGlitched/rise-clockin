@@ -42,19 +42,35 @@ class Wallet(context: Context, private val rpc: Rpc) {
         authToken = prefs.getString("auth", null)
     }
 
+    init {
+        // Seal a seed left in the clear by an older version as soon as the app starts.
+        if (prefs.contains("seed")) runCatching { practiceKeypair() }
+    }
+
     val kind: WalletKind? get() = prefs.getString("kind", null)?.let { WalletKind.valueOf(it) }
     val address: String? get() = prefs.getString("address", null)
     val walletLabel: String? get() = prefs.getString("label", null)
 
-    private fun practiceKeypair(): Keypair? =
-        prefs.getString("seed", null)?.let { Keypair.fromSecretKey(Base64.decode(it, Base64.NO_WRAP)) }
+    /** The practice seed is sealed with a Keystore key; older installs kept it in the clear and are moved over. */
+    private fun practiceKeypair(): Keypair? {
+        prefs.getString("seed_sealed", null)?.let {
+            return Keypair.fromSecretKey(KeystoreBox.open(Base64.decode(it, Base64.NO_WRAP)))
+        }
+        val legacy = prefs.getString("seed", null) ?: return null
+        val seed = Base64.decode(legacy, Base64.NO_WRAP)
+        prefs.edit().putString("seed_sealed", sealSeed(seed)).remove("seed").apply()
+        return Keypair.fromSecretKey(seed)
+    }
+
+    private fun sealSeed(seed: ByteArray) = Base64.encodeToString(KeystoreBox.seal(seed), Base64.NO_WRAP)
 
     fun usePractice(): String {
         val existing = practiceKeypair()
         val kp = existing ?: Keypair.generate()
         prefs.edit()
             .putString("kind", WalletKind.Practice.name)
-            .putString("seed", Base64.encodeToString(kp.secret.copyOf(32), Base64.NO_WRAP))
+            .putString("seed_sealed", sealSeed(kp.secret.copyOf(32)))
+            .remove("seed")
             .putString("address", kp.publicKey.toBase58())
             .putString("label", "Practice wallet")
             .apply()

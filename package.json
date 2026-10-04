@@ -23,5 +23,13 @@
     "ts-mocha": "^10.1.0",
     "typescript": "^5.9.3",
     "@solana/spl-token-metadata": "^0.1.6"
+  },
+  "overrides": {
+    "jayson": {
+      "uuid": "^11.1.1"
+    },
+    "mocha": {
+      "serialize-javascript": "^7.0.5"
+    }
   }
 }

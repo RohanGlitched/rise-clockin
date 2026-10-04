@@ -1054,6 +1054,11 @@ export type Rise = {
       "code": 6016,
       "name": "overflow",
       "msg": "Amount too large"
+    },
+    {
+      "code": 6017,
+      "name": "unsafeMint",
+      "msg": "This token has extensions that could move or freeze pact funds"
     }
   ],
   "types": [

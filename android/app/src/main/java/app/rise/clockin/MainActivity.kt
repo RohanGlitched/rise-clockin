@@ -52,6 +52,6 @@ class MainActivity : ComponentActivity() {
             uri.scheme == "rise" && uri.host == "join" -> segs.firstOrNull()
             segs.size >= 2 && segs[0] == "join" -> segs[1]
             else -> null
-        }?.takeIf { it.length in 32..44 }
+        }?.takeIf { it.length in 32..44 && runCatching { org.sol4k.PublicKey(it) }.isSuccess }
     }
 }

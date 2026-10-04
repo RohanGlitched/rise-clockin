@@ -14,6 +14,9 @@ import {
   ExtensionType,
   getMintLen,
   createInitializeMintInstruction,
+  createInitializeMetadataPointerInstruction,
+  createInitializePermanentDelegateInstruction,
+  createInitializeTransferFeeConfigInstruction,
   getAssociatedTokenAddressSync,
   unpackAccount,
 } from "@solana/spl-token";
@@ -181,6 +184,8 @@ describe("rise", () => {
     // alice 2 minutes early, bob 5 minutes late (inside 10 min grace), cara oversleeps
     await setTime(T0 + 6 * 3600 - 120);
     await clockIn(pact, alice);
+    // A second clock-in a second later (a new slot, so it isn't the same transaction again).
+    await setTime(T0 + 6 * 3600 - 119);
     await expectError(clockIn(pact, alice), "AlreadyIn");
     await setTime(T0 + 6.5 * 3600 + 300);
     await clockIn(pact, bob);
@@ -277,5 +282,56 @@ describe("rise", () => {
     } catch (e: any) {
       expect(String(e.message)).to.not.equal("should fail");
     }
+  });
+  it("refuses mints that could move, tax or freeze pact funds", async () => {
+    // A Token-2022 mint with the given extensions, owned by the admin.
+    async function mintWith(exts: ExtensionType[], init: (m: PublicKey) => anchor.web3.TransactionInstruction[]) {
+      const kp = Keypair.generate();
+      const len = getMintLen(exts);
+      await provider.sendAndConfirm!(
+        new Transaction().add(
+          SystemProgram.createAccount({
+            fromPubkey: admin.publicKey,
+            newAccountPubkey: kp.publicKey,
+            space: len,
+            lamports: Number((await ctx.banksClient.getRent()).minimumBalance(BigInt(len))),
+            programId: TOKEN_2022_PROGRAM_ID,
+          }),
+          ...init(kp.publicKey),
+          createInitializeMintInstruction(kp.publicKey, 6, admin.publicKey, null, TOKEN_2022_PROGRAM_ID),
+        ),
+        [admin, kp],
+      );
+      return kp.publicKey;
+    }
+    const pactWith = (seed: number, m: PublicKey) =>
+      program.methods
+        .createPact(new BN(seed), "Hostile mint", new BN(STAKE), new BN(T0 + 40 * DAY), DAY, 3, 600, 10, true)
+        .accountsPartial({
+          creator: admin.publicKey,
+          pact: pda(Buffer.from("pact"), admin.publicKey.toBuffer(), new BN(seed).toArrayLike(Buffer, "le", 8)),
+          mint: m,
+          tokenProgram: TOKEN_2022_PROGRAM_ID,
+        })
+        .signers([admin])
+        .rpc();
+
+    // A permanent delegate could pull SKR out of the vault at any time.
+    const delegated = await mintWith([ExtensionType.PermanentDelegate], (m) => [
+      createInitializePermanentDelegateInstruction(m, admin.publicKey, TOKEN_2022_PROGRAM_ID),
+    ]);
+    await expectError(pactWith(70, delegated), "UnsafeMint");
+
+    // A transfer fee would leave the vault short of what members locked.
+    const taxed = await mintWith([ExtensionType.TransferFeeConfig], (m) => [
+      createInitializeTransferFeeConfigInstruction(m, admin.publicKey, admin.publicKey, 100, 1_000_000n, TOKEN_2022_PROGRAM_ID),
+    ]);
+    await expectError(pactWith(71, taxed), "UnsafeMint");
+
+    // Metadata only describes the token, so it's allowed (test SKR carries it).
+    const described = await mintWith([ExtensionType.MetadataPointer], (m) => [
+      createInitializeMetadataPointerInstruction(m, admin.publicKey, m, TOKEN_2022_PROGRAM_ID),
+    ]);
+    await pactWith(72, described);
   });
 });

@@ -12,6 +12,7 @@
 
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token_2022::spl_token_2022::extension::ExtensionType;
 use anchor_spl::token_interface::{
     self, Mint, MintTo, TokenAccount, TokenInterface, TransferChecked,
 };
@@ -53,7 +54,7 @@ pub mod rise {
         );
         ticket.last_ts = now;
         ticket.bump = ctx.bumps.ticket;
-        ctx.accounts.faucet.drips += 1;
+        ctx.accounts.faucet.drips = ctx.accounts.faucet.drips.checked_add(1).ok_or(RiseError::Overflow)?;
 
         let seeds: &[&[u8]] = &[b"mint_auth", &[ctx.bumps.mint_auth]];
         token_interface::mint_to(
@@ -96,6 +97,7 @@ pub mod rise {
         );
         require!((2..=500).contains(&max_members), RiseError::BadMembers);
         require!(start_ts >= now - day_secs as i64, RiseError::StartInPast);
+        check_mint(&ctx.accounts.mint.to_account_info())?;
 
         let p = &mut ctx.accounts.pact;
         p.bump = ctx.bumps.pact;
@@ -150,7 +152,7 @@ pub mod rise {
             ctx.accounts.mint.decimals,
         )?;
 
-        pact.member_count += 1;
+        pact.member_count = pact.member_count.checked_add(1).ok_or(RiseError::Overflow)?;
         pact.total_deposited = pact.total_deposited.checked_add(deposit).ok_or(RiseError::Overflow)?;
 
         let m = &mut ctx.accounts.member;
@@ -191,11 +193,11 @@ pub mod rise {
 
         let delta = (now - target) as i16;
         m.offsets[d] = delta;
-        m.hits += 1;
+        m.hits = m.hits.checked_add(1).ok_or(RiseError::Overflow)?;
         m.streak = if m.last_hit_day == day as i32 - 1 { m.streak + 1 } else { 1 };
         m.best_streak = m.best_streak.max(m.streak);
         m.last_hit_day = day as i32;
-        pact.total_hits += 1;
+        pact.total_hits = pact.total_hits.checked_add(1).ok_or(RiseError::Overflow)?;
 
         emit!(ClockedIn {
             pact: pact.key(),
@@ -241,10 +243,43 @@ pub mod rise {
             )?;
         }
         let pact = &mut ctx.accounts.pact;
-        pact.total_paid += amount;
-        pact.claims += 1;
+        pact.total_paid = pact.total_paid.checked_add(amount).ok_or(RiseError::Overflow)?;
+        pact.claims = pact.claims.checked_add(1).ok_or(RiseError::Overflow)?;
         Ok(())
     }
+}
+
+/// Token-2022 extensions a pact's mint may carry. Pacts hold stakes for weeks, so anything
+/// that lets someone other than this program move, tax, block or freeze the vault's tokens
+/// (permanent delegate, transfer fees, transfer hooks, pausing, default-frozen accounts...)
+/// is refused. Metadata and token-group extensions only describe the token.
+const SAFE_MINT_EXTENSIONS: [ExtensionType; 6] = [
+    ExtensionType::MetadataPointer,
+    ExtensionType::TokenMetadata,
+    ExtensionType::GroupPointer,
+    ExtensionType::TokenGroup,
+    ExtensionType::GroupMemberPointer,
+    ExtensionType::TokenGroupMember,
+];
+
+/// Walks the mint's extension list (type-length-value entries after the 165-byte base and
+/// the account-type byte). Classic SPL Token mints have no extensions and always pass.
+fn check_mint(mint: &AccountInfo) -> Result<()> {
+    let data = mint.try_borrow_data()?;
+    let mut i = 166;
+    while i + 4 <= data.len() {
+        let ty = u16::from_le_bytes([data[i], data[i + 1]]);
+        if ty == ExtensionType::Uninitialized as u16 {
+            break;
+        }
+        require!(
+            SAFE_MINT_EXTENSIONS.iter().any(|e| *e as u16 == ty),
+            RiseError::UnsafeMint
+        );
+        let len = u16::from_le_bytes([data[i + 2], data[i + 3]]) as usize;
+        i += 4 + len;
+    }
+    Ok(())
 }
 
 fn early(day_secs: u32) -> i64 {
@@ -520,4 +555,6 @@ pub enum RiseError {
     DripTooSoon,
     #[msg("Amount too large")]
     Overflow,
+    #[msg("This token has extensions that could move or freeze pact funds")]
+    UnsafeMint,
 }

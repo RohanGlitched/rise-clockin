@@ -1048,6 +1048,11 @@
       "code": 6016,
       "name": "Overflow",
       "msg": "Amount too large"
+    },
+    {
+      "code": 6017,
+      "name": "UnsafeMint",
+      "msg": "This token has extensions that could move or freeze pact funds"
     }
   ],
   "types": [

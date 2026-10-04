@@ -3,6 +3,7 @@ name = "rise"
 version = "0.1.0"
 description = "Rise: a wake-up alarm with stakes. Clock in on Solana before your friends do."
 edition = "2021"
+license = "MIT"
 
 [lib]
 crate-type = ["cdylib", "lib"]
