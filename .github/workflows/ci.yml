@@ -56,7 +56,7 @@ jobs:
           mkdir -p tests/fixtures
           cp target/deploy/rise.so tests/fixtures/rise.so
           set -o pipefail
-          npx ts-mocha -p ./tsconfig.json -t 1000000 tests/rise.ts 2>&1 | grep -v "DEBUG solana_runtime" | tee test-output.txt || {
+          npx ts-mocha -p ./tsconfig.json -t 1000000 'tests/*.ts' 2>&1 | grep -v "DEBUG solana_runtime" | tee test-output.txt || {
             grep -E "Error|failing|passing|[0-9]+\) " test-output.txt | head -n 10 | while read -r line; do echo "::error title=Program tests::$line"; done
             exit 1
           }

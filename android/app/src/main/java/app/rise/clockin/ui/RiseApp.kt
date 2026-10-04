@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,7 +58,7 @@ import kotlinx.coroutines.delay
 
 sealed interface Screen {
     data object Home : Screen
-    data class Pact(val address: String, val justStarted: Boolean = false) : Screen
+    data class Pact(val address: String, val justStarted: Boolean = false, val joinedSkr: Long = 0, val joinedSig: String? = null) : Screen
     data object NewPact : Screen
     data class Join(val address: String) : Screen
     data object WakeSpot : Screen
@@ -110,7 +112,7 @@ fun RiseApp(invite: String?, onInviteHandled: () -> Unit) {
     ) { screen ->
         when (screen) {
             Screen.Home -> HomeShell(nav)
-            is Screen.Pact -> PactScreen(screen.address, screen.justStarted, nav)
+            is Screen.Pact -> PactScreen(screen.address, screen.justStarted, nav, screen.joinedSkr, screen.joinedSig)
             Screen.NewPact -> NewPactScreen(nav)
             is Screen.Join -> JoinScreen(screen.address, nav)
             Screen.WakeSpot -> WakeSpotScreen(nav)
@@ -129,6 +131,11 @@ private fun HomeShell(nav: Nav) {
                 Tab.You -> YouTab(nav)
             }
         }
+        // Content scrolls under the status bar; a soft night scrim keeps the clock and icons readable.
+        Box(
+            Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.statusBars).align(Alignment.TopCenter)
+                .background(Brush.verticalGradient(listOf(Rise.NightDeep.copy(alpha = 0.85f), Rise.NightDeep.copy(alpha = 0f)))),
+        )
         BottomBar(tab, { nav.tab.value = it }, Modifier.align(Alignment.BottomCenter))
     }
 }

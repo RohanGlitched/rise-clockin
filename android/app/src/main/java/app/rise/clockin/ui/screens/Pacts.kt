@@ -174,7 +174,7 @@ fun PactRow(v: PactView, now: Long, onClick: () -> Unit) {
             Spacer(Modifier.height(10.dp))
             Row {
                 v.ranked.take(5).forEachIndexed { i, m -> Avatar(m.avatar, 28.dp, Modifier.offset(x = (-8 * i).dp), ring = Rise.NightDeep) }
-                if (v.members.size > 5) Text("+${v.members.size - 5}", style = RiseType.small, color = Rise.Mist, modifier = Modifier.padding(start = 2.dp, top = 5.dp))
+                if (v.members.size > 5) Text("+${v.members.size - 5}", style = RiseType.small, color = Rise.Mist, modifier = Modifier.offset(x = (-8 * (minOf(v.ranked.size, 5) - 1)).dp).padding(start = 6.dp, top = 5.dp))
             }
         }
         Column(horizontalAlignment = Alignment.End) {
@@ -187,7 +187,7 @@ fun PactRow(v: PactView, now: Long, onClick: () -> Unit) {
 // ------------------------------------------------------------------ Pact detail
 
 @Composable
-fun PactScreen(address: String, justStarted: Boolean, nav: Nav) {
+fun PactScreen(address: String, justStarted: Boolean, nav: Nav, joinedSkr: Long = 0, joinedSig: String? = null) {
     val state by Store.state.collectAsState()
     val now = rememberNow(5_000)
     val context = LocalContext.current
@@ -204,6 +204,19 @@ fun PactScreen(address: String, justStarted: Boolean, nav: Nav) {
         if (view == null) { Spacer(Modifier.height(20.dp)); CardSkeleton(); return@DetailScaffold }
         val p = view.pact
         val me = view.me
+        if (joinedSkr > 0) {
+            Spacer(Modifier.height(10.dp))
+            SkyPanel(Modifier.fillMaxWidth()) {
+                Column {
+                    Text("You're in.", style = RiseType.heading, color = Rise.Ivory)
+                    Spacer(Modifier.height(4.dp))
+                    Text("${skr(joinedSkr)} SKR is locked in the pact's vault. Your name is on the card; your first morning is the next open column.", style = RiseType.body, color = Rise.Ivory.copy(alpha = 0.85f))
+                    joinedSig?.let { sig ->
+                        TextAction("See the transaction on Solana", { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.explorerTx(sig)))) })
+                    }
+                }
+            }
+        }
         Spacer(Modifier.height(10.dp))
         TimeCard(view, now, Modifier.fillMaxWidth(), maxRows = 20)
         Spacer(Modifier.height(20.dp))
@@ -247,7 +260,7 @@ fun PactScreen(address: String, justStarted: Boolean, nav: Nav) {
         Text("How the pot works", style = RiseType.bodyStrong, color = Rise.Ivory)
         Spacer(Modifier.height(4.dp))
         Text(
-            "Each morning you clock in on time earns your ${skr(p.stakePerDay)} SKR back. A missed morning stays in the pot. When the pact ends, the pot is split by mornings kept, so the earliest risers take the most.",
+            "Each morning you clock in on time earns your ${skr(p.stakePerDay)} SKR back. A missed morning stays in the pot. When the pact ends, the pot is split by mornings kept, so whoever got up most often takes the most.",
             style = RiseType.small, color = Rise.Ivory.copy(alpha = 0.75f),
         )
         TextAction("View pact on Solana Explorer", { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.explorerAddress(p.address)))) })
@@ -315,7 +328,18 @@ fun NewPactScreen(nav: Nav) {
             textStyle = RiseType.title.copy(color = Rise.Ivory), cursorBrush = SolidColor(Rise.Sun), singleLine = true,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Pact name" },
-            decorationBox = { inner -> Column { inner(); Spacer(Modifier.height(8.dp)); Box(Modifier.fillMaxWidth().height(2.dp).background(if (validName) Rise.Sun else Rise.Rose)) } },
+            decorationBox = { inner ->
+                Column {
+                    Box { if (name.isEmpty()) Text("Sunrise Club", style = RiseType.title, color = Rise.Ivory.copy(alpha = 0.3f)); inner() }
+                    Spacer(Modifier.height(8.dp))
+                    Box(Modifier.fillMaxWidth().height(2.dp).background(if (validName) Rise.Sun else Rise.Rose))
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        if (name.isEmpty()) "Give it a name your friends will recognise. Up to 32 characters." else "${name.length}/32",
+                        style = RiseType.tiny, color = if (name.length >= 32) Rise.Rose else Rise.Mist,
+                    )
+                }
+            },
         )
         Spacer(Modifier.height(24.dp))
         Text("Stake a morning", style = RiseType.bodyStrong, color = Rise.Ivory)
@@ -419,8 +443,11 @@ fun JoinScreen(address: String, nav: Nav) {
                     Column {
                         Text("You'd lock ${skr(deposit)} SKR", style = RiseType.heading, color = Rise.Ivory)
                         Spacer(Modifier.height(6.dp))
+                        val locking = state.pacts.firstOrNull { it.me != null && !it.pact.isOver(now) }
                         Text(
-                            "${p.days - firstDay} mornings at ${skr(p.stakePerDay)} SKR, starting ${if (firstDay == p.dayIndex(now)) "today" else "with the next one"} at $firstMorning. Your wake time is ${formatMinutes(profile.wakeMinutes)} ${amPm(profile.wakeMinutes)}; change it in You before joining if you need to.",
+                            "${p.days - firstDay} mornings at ${skr(p.stakePerDay)} SKR, starting ${if (firstDay == p.dayIndex(now)) "today" else "with the next one"} at $firstMorning. " +
+                                if (locking != null) "Your wake time is ${formatMinutes(profile.wakeMinutes)} ${amPm(profile.wakeMinutes)}, held by ${locking.pact.name} while it runs."
+                                else "Your wake time is ${formatMinutes(profile.wakeMinutes)} ${amPm(profile.wakeMinutes)}; change it in You before joining if you need to.",
                             style = RiseType.small, color = Rise.Ivory.copy(alpha = 0.8f),
                         )
                     }
@@ -434,7 +461,7 @@ fun JoinScreen(address: String, nav: Nav) {
                         busy = true; error = null
                         scope.launch {
                             runCatching { Store.join(p, sender) }
-                                .onSuccess { nav.replace(Screen.Pact(address)) }
+                                .onSuccess { sig -> nav.replace(Screen.Pact(address, joinedSkr = deposit, joinedSig = sig)) }
                                 .onFailure { error = RiseProgram.explain(it) }
                             busy = false
                         }

@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rise Invite</title>
+<title>You're invited to a Rise pact</title>
+<meta property="og:title" content="Join my Rise pact">
+<meta property="og:description" content="Wake up on time, clock in on Solana, or pay the pot. Test SKR on devnet.">
+<meta property="og:image" content="https://rise-clockin.vercel.app/og.png">
 <meta name="description" content="A friend invited you to a Rise pact: wake up on time, clock in on Solana, or pay the pot.">
 <meta name="theme-color" content="#0e1430">
 <link rel="icon" href="/icon.png">
@@ -17,6 +20,8 @@
   .facts { display: flex; gap: 26px; margin-top: 22px; flex-wrap: wrap; }
   .facts b { display: block; font-family: "Doto", monospace; font-weight: 900; font-size: 26px; color: var(--sun); }
   .facts span { font-size: 13px; color: var(--mist); }
+  .join .note { color: rgba(246, 241, 231, .92); }
+  .join .qr span { color: rgba(246, 241, 231, .8); }
 </style>
 </head>
 <body>
@@ -32,23 +37,34 @@
   </div>
 </header>
 <script type="module">
-import { loadPact, timeCard, skr, escapeHtml } from "/rise.js";
+import { loadPact, timeCard, skr, escapeHtml, isOver, plural, dayIndex } from "/rise.js";
 const el = document.getElementById("join");
 const address = location.pathname.split("/").filter(Boolean)[1] || "";
+const notAPact = () => {
+  el.innerHTML = `<h1>This invite doesn't point to a pact.</h1><p class="lede">Ask your friend to send the link again, or <a href="/">see what Rise is</a>.</p><div class="cta"><a class="btn" href="/">See live pacts</a><a class="btn ghost" href="/rise.apk" download>Get the Android app</a></div>`;
+};
 try {
-  const p = await loadPact(address);
+  const p = address ? await loadPact(address) : null;
   if (!p) throw new Error("missing");
-  document.title = `Join ${p.name} on Rise`;
+  const over = isOver(p);
+  const left = Math.max(0, p.days - Math.max(0, dayIndex(p, Date.now() / 1000)));
+  document.title = over ? `${p.name} on Rise` : `Join ${p.name} on Rise`;
+  const start = new Date(p.startTs * 1000).toLocaleDateString([], { month: "short", day: "numeric" });
+  const end = new Date((p.startTs + p.days * p.daySecs) * 1000).toLocaleDateString([], { month: "short", day: "numeric" });
   el.innerHTML = `
-    <p class="note" style="color:var(--sun);margin:0 0 8px">You're invited</p>
+    <p class="note" style="color:var(--sun);margin:0 0 8px">${over ? "This pact has ended" : "You're invited"}</p>
     <h1>${escapeHtml(p.name)}</h1>
-    <p class="lede">Wake up on time and clock in on Solana. Every morning you keep earns your stake back; every miss goes to the pot.</p>
-    <div class="facts"><div><b>${skr(p.stakePerDay)}</b><span>SKR a morning</span></div><div><b>${p.days}</b><span>mornings</span></div><div><b>${p.members.length}</b><span>in so far</span></div></div>
+    <p class="lede">${over
+      ? `It ran ${start} to ${end}. Everyone who kept mornings can collect their payout in the app. Start your own pact to go again.`
+      : `Wake up on time and clock in on Solana. Every morning you keep earns your stake back; every miss goes to the pot. Joining now locks ${skr(p.stakePerDay * left)} test SKR for the ${plural(left, "morning")} left.`}</p>
+    <div class="facts"><div><b>${skr(p.stakePerDay)}</b><span>SKR a morning</span></div><div><b>${p.days}</b><span>mornings · ${start} to ${end}</span></div><div><b>${p.members.length}</b><span>${over ? "took part" : "in so far"}</span></div></div>
     ${timeCard(p)}
-    <div class="cta"><a class="btn" href="rise://join/${p.address}">Open in Rise</a><a class="btn ghost" href="/rise.apk" download>Get the Android app</a></div>
-    <p class="note">New to Rise? Install the app, then open this link again.</p>`;
-} catch {
-  el.innerHTML = `<h1>This invite doesn't point to a pact.</h1><p class="lede">Ask your friend to send the link again, or <a href="/">see what Rise is</a>.</p>`;
+    <div class="cta">${over ? `<a class="btn" href="/">See live pacts</a>` : `<a class="btn" href="rise://join/${p.address}">Open in Rise</a>`}<a class="btn ghost" href="/rise.apk" download>Get the Android app</a></div>
+    <p class="note">${over ? "Devnet and test SKR, so nothing here cost real money." : "New to Rise? Install the app, choose a wallet or the practice wallet, grab test SKR, then open this link again and tap Join. Devnet and test SKR: free."}</p>
+    <div class="qr" style="display:flex"><img src="/qr-apk.svg" alt="QR code that downloads the Rise APK" width="96" height="96"><div><b>Reading this on a laptop?</b><span>Point your phone's camera here to install Rise, then open this page on the phone.</span></div></div>`;
+} catch (e) {
+  if (e && e.message === "missing") notAPact();
+  else el.innerHTML = `<h1>Solana devnet didn't answer.</h1><p class="lede">The invite is probably fine. Give it a moment and try again.</p><div class="cta"><a class="btn" href="">Try again</a><a class="btn ghost" href="/">See what Rise is</a></div>`;
 }
 </script>
 </body>

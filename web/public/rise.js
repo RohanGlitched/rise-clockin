@@ -74,12 +74,21 @@ export async function loadPacts() {
   });
 }
 
+/** The pact at `address`, or null when no Rise pact lives there. Throws only when devnet itself fails. */
 export async function loadPact(address) {
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) return null;
   const info = await rpc("getAccountInfo", [address, { encoding: "base64", commitment: "confirmed" }]);
-  if (!info.value) return null;
-  const p = decodePact(address, fromB64(info.value.data[0]));
-  const all = await accounts("Member");
-  p.members = all.map(([a, d]) => decodeMember(a, d)).filter((m) => m.pact === address);
+  if (!info.value || info.value.owner !== PROGRAM) return null;
+  const data = fromB64(info.value.data[0]);
+  const disc = await sha8("account:Pact");
+  if (data.length < 8 || disc.some((b, i) => data[i] !== b)) return null;
+  const p = decodePact(address, data);
+  // Only this pact's members: the pact key sits right after the 8-byte discriminator.
+  const res = await rpc("getProgramAccounts", [PROGRAM, {
+    encoding: "base64", commitment: "confirmed",
+    filters: [{ memcmp: { offset: 0, bytes: b58(await sha8("account:Member")) } }, { memcmp: { offset: 8, bytes: address } }],
+  }]);
+  p.members = res.map((a) => decodeMember(a.pubkey, fromB64(a.account.data[0])));
   return p;
 }
 
@@ -89,38 +98,52 @@ export const dayIndex = (p, now) => (now < p.startTs ? -1 : Math.floor((now - p.
 export const target = (p, m, d) => p.startTs + d * p.daySecs + m.wakeOffset;
 export const closes = (p, m, d) => target(p, m, d) + p.graceSecs;
 export const fmt = (sec) => new Date(sec * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+/** "6:30a" / "10:03p": short enough for a card cell, still unambiguous. */
+export const fmtShort = (sec) => {
+  const d = new Date(sec * 1000);
+  const h = d.getHours(), m = String(d.getMinutes()).padStart(2, "0");
+  return `${h % 12 || 12}:${m}${h < 12 ? "a" : "p"}`;
+};
+export const isOver = (p, now = Date.now() / 1000) => now > p.startTs + p.days * p.daySecs + p.graceSecs;
+export const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 export function pot(p, now) {
   let missed = 0;
   for (const m of p.members) for (let d = m.firstDay; d < p.days; d++) if (m.offsets[d] === NOT_IN && now > closes(p, m, d)) missed++;
   return missed * p.stakePerDay;
 }
 
-const AVATAR = ["#FFD166", "#F2A0A1", "#7FC8A9", "#9DB4FF", "#FFB877", "#C9A7F5", "#6FD3E3", "#EDE3CC"];
+const AVATAR = ["#FFD166", "#F2A0A1", "#7FC8A9", "#9DB4FF", "#FFB877", "#C9A7F5", "#6FD3E3", "#4C8DAE"];
 export const avatarColor = (i) => AVATAR[((i % 8) + 8) % 8];
 
 /** Renders a pact as a manila time card (same rules as the app). */
 export function timeCard(p, now = Date.now() / 1000) {
+  const over = isOver(p, now);
   const today = Math.max(-1, Math.min(dayIndex(p, now), p.days - 1));
+  // Pacts with short test "days" would repeat the same calendar date; label those by morning.
+  const byDate = p.daySecs >= 86400;
   const end = Math.max(Math.min(Math.max(today, 0) + 3, p.days - 1), Math.min(6, p.days - 1));
   const start = Math.max(0, end - 6);
   const days = []; for (let d = start; d <= end; d++) days.push(d);
   const rows = [...p.members].sort((a, b) => b.hits - a.hits || b.streak - a.streak).slice(0, 8);
   const head = days.map((d) => {
-    const dt = new Date((p.startTs + d * p.daySecs + 43200) * 1000);
-    return `<th class="${d === today ? "today" : ""}"><span>${dt.toLocaleDateString([], { weekday: "short" }).slice(0, 2)}</span><b>${dt.getDate()}</b></th>`;
+    const dt = new Date((p.startTs + d * p.daySecs + p.daySecs / 2) * 1000);
+    const mark = d === today && !over ? "today" : "";
+    return byDate
+      ? `<th class="${mark}"><span>${dt.toLocaleDateString([], { weekday: "short" }).slice(0, 2)}</span><b>${dt.getDate()}</b></th>`
+      : `<th class="${mark}"><span>Day</span><b>${d + 1}</b></th>`;
   }).join("");
   const body = rows.map((m) => {
     const cells = days.map((d) => {
       if (d < m.firstDay) return `<td class="na">–</td>`;
       const off = m.offsets[d];
-      if (off !== NOT_IN) return `<td><i class="${off > 0 ? "late" : "on"}" style="--r:${((d * 7 + m.hits * 13) % 7) - 3}deg">${fmt(target(p, m, d) + off).replace(/\s?[AP]M/i, "")}</i></td>`;
+      if (off !== NOT_IN) return `<td><i class="${off > 0 ? "late" : "on"}" style="--r:${((d * 7 + m.hits * 13) % 7) - 3}deg">${fmtShort(target(p, m, d) + off)}</i></td>`;
       if (now > closes(p, m, d)) return `<td><span class="hole" title="Missed"></span></td>`;
       return `<td class="na">·</td>`;
     }).join("");
     return `<tr><th><span class="av" style="background:${avatarColor(m.avatar)}"></span>${escapeHtml(m.name)}</th>${cells}</tr>`;
   }).join("");
   const d = dayIndex(p, now);
-  const sub = d < 0 ? "Starts soon" : now > p.startTs + p.days * p.daySecs + p.graceSecs ? `Finished after ${p.days} mornings` : `Morning ${d + 1} of ${p.days}, ${skr(p.stakePerDay)} SKR a morning`;
+  const sub = d < 0 ? "Starts soon" : over ? `Finished after ${plural(p.days, "morning")}` : `Morning ${d + 1} of ${p.days}, ${skr(p.stakePerDay)} SKR a morning`;
   return `<div class="card"><div class="card-top"><div><h3>${escapeHtml(p.name)}</h3><p>${sub}</p></div></div>
     <table><thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table>
     <div class="card-foot"><span><i class="k on"></i>On time</span><span><i class="k late"></i>Late</span><span><span class="hole sm"></span>Missed</span><b>Pot ${skr(pot(p, now))} SKR</b></div></div>`;

@@ -12,6 +12,14 @@ Everything a judge needs to check the claims in the demo: deployed addresses, tr
 | Public pact "Sunrise Club" | [`6mKwohdjprE3F8Ujxz24AtfJv9Q6G9xCdAMR2SLgKhRK`](https://rise-clockin.vercel.app/join/6mKwohdjprE3F8Ujxz24AtfJv9Q6G9xCdAMR2SLgKhRK) |
 | Public pact "No snooze October" | [`63XaKeZjLePbFwSspPjtsf3xbGygWJjize4FmqC8AXcQ`](https://rise-clockin.vercel.app/join/63XaKeZjLePbFwSspPjtsf3xbGygWJjize4FmqC8AXcQ) |
 
+## The APK
+
+| File | SHA-256 |
+| --- | --- |
+| [`rise.apk`](https://rise-clockin.vercel.app/rise.apk) (signed release, 43 MB, Android 9+) | `78ac32151794cb1a99c992b5cc23ad1974649a2b0a7b3c699705b1fbf44e8c42` |
+
+Check it with `sha256sum rise.apk` (or `certutil -hashfile rise.apk SHA256` on Windows). The signing certificate's fingerprint is the one published in [`/.well-known/assetlinks.json`](https://rise-clockin.vercel.app/.well-known/assetlinks.json).
+
 ## Transactions from the demo
 
 | Moment | Transaction |
@@ -28,10 +36,10 @@ Everything a judge needs to check the claims in the demo: deployed addresses, tr
 cargo build-sbf --manifest-path programs/rise/Cargo.toml --sbf-out-dir target/deploy
 npm ci
 mkdir -p tests/fixtures && cp target/deploy/rise.so tests/fixtures/
-TS_NODE_TRANSPILE_ONLY=1 npx ts-mocha -p ./tsconfig.json -t 1000000 tests/rise.ts
+npm run test:ci      # ts-mocha over tests/*.ts
 ```
 
-Seven tests run on Bankrun with a controllable clock: faucet rate limit, settings validation, refusing mints that could move or freeze pact funds, a full 3-member pact (early, late and missed mornings, closed windows, double clock-in, streaks, exact payouts, vault drained to zero), late joiners, the nobody-woke refund, and clock-in authorisation. The same steps run in [CI](.github/workflows/ci.yml) on every push.
+84 tests run on Bankrun with a controllable clock (`npm test`, or `npm run test:ci` on Linux): wake windows to the second, payout conservation over hundreds of random pacts, every Token-2022 extension the mint guard refuses, authorisation across pacts and vaults, settings and membership limits, the faucet cooldown, event fields and a compute-unit snapshot. Two documented known issues are pending tests. The same suite runs in [CI](.github/workflows/ci.yml) on every push.
 
 **Android app** (JDK 21, Android SDK 36):
 

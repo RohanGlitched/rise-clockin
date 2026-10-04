@@ -257,7 +257,7 @@ private fun ColumnScope.RingingStage(rehearsal: Boolean, onSlide: () -> Unit) {
     val pulse = rememberInfiniteTransition(label = "ring").animateFloat(1f, 1.04f, infiniteRepeatable(tween(600), RepeatMode.Reverse), label = "s")
 
     Spacer(Modifier.weight(0.4f))
-    Text("Good morning", style = RiseType.bodyStrong, color = Rise.Sun)
+    Text(AlarmService.greeting(), style = RiseType.bodyStrong, color = Rise.Sun)
     Box(Modifier.scale(pulse.value)) { BigClock() }
     Spacer(Modifier.height(10.dp))
     when {
@@ -376,7 +376,7 @@ private fun ColumnScope.StampedStage(r: ClockInResult, onStamp: () -> Unit, onCl
     ) {
         Box(Modifier.height(150.dp), contentAlignment = Alignment.Center) {
             if (stamped) Stamp(
-                t.format(DateTimeFormatter.ofPattern("HH:mm:ss")),
+                t.format(DateTimeFormatter.ofPattern("h:mm:ss")),
                 t.format(DateTimeFormatter.ofPattern("EEEE d MMMM")),
                 late = late,
             )

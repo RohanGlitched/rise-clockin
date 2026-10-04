@@ -137,7 +137,8 @@ fun Notice(text: String, modifier: Modifier = Modifier, tone: Color = Rise.Rose)
 /** Eight sky glyphs people choose from. Index is stored on chain. */
 val AvatarColors = listOf(
     Color(0xFFFFD166), Color(0xFFF2A0A1), Color(0xFF7FC8A9), Color(0xFF9DB4FF),
-    Color(0xFFFFB877), Color(0xFFC9A7F5), Color(0xFF6FD3E3), Color(0xFFEDE3CC),
+    // The eighth sign used to be manila, which vanished on the manila time card; steel blue reads everywhere.
+    Color(0xFFFFB877), Color(0xFFC9A7F5), Color(0xFF6FD3E3), Color(0xFF4C8DAE),
 )
 val AvatarNames = listOf("Sun", "Rose", "Fern", "Moon", "Ember", "Iris", "Tide", "Dune")
 

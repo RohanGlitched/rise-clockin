@@ -90,8 +90,9 @@ fun TodayTab(nav: Nav) {
     val now = rememberNow()
     val context = androidx.compose.ui.platform.LocalContext.current
     val active = state.pacts.filter { !it.pact.isOver(now) }
-    val primary = active.firstOrNull() ?: state.pacts.firstOrNull()
     val open = state.pacts.filter { v -> v.me?.openDay(v.pact, now) != null }
+    // Lead with the pact whose window is open, else the one with the most people in it.
+    val primary = open.firstOrNull() ?: active.maxByOrNull { it.members.size } ?: state.pacts.firstOrNull()
     val nextWake = AlarmScheduler.nextWake(profile) / 1000
     val streak = state.pacts.maxOfOrNull { it.me?.streak ?: 0 } ?: 0
     val finishedUnclaimed = state.pacts.filter { it.pact.isOver(now) && it.me?.claimed == false }
@@ -135,7 +136,7 @@ fun TodayTab(nav: Nav) {
             }
             coach?.let { c ->
                 Spacer(Modifier.height(18.dp))
-                CoachPanel(c)
+                CoachPanel(c, profile.mission)
             }
 
             // Window open right now: the most important thing on the screen.
@@ -246,7 +247,7 @@ fun CardSkeleton() {
 
 /** Rise Coach: tomorrow's predicted risk, why, and the difficulty it chose. */
 @Composable
-fun CoachPanel(c: app.rise.clockin.ai.CoachReport) {
+fun CoachPanel(c: app.rise.clockin.ai.CoachReport, mission: app.rise.clockin.data.Mission? = null) {
     var open by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     val pct = (c.risk * 100).toInt()
     val tone = when (c.difficulty) {
@@ -279,12 +280,23 @@ fun CoachPanel(c: app.rise.clockin.ai.CoachReport) {
                 Text("${if (f.weight > 0) "Raises" else "Lowers"} risk: ${f.text}", style = RiseType.small, color = Rise.Mist)
             }
             Spacer(Modifier.height(6.dp))
+            val target = when (mission?.id) {
+                1 -> "${c.difficulty.steps} steps"
+                0 -> "${c.difficulty.lux} lux of daylight"
+                3 -> "a ${(c.difficulty.visionConfidence * 100).toInt()}% morning-scene match"
+                2 -> "your wake-spot code"
+                else -> "${c.difficulty.steps} steps, ${c.difficulty.lux} lux or a ${(c.difficulty.visionConfidence * 100).toInt()}% vision match"
+            }
             Text(
-                "Mission: ${c.difficulty.steps} steps, ${c.difficulty.lux} lux of light or ${(c.difficulty.visionConfidence * 100).toInt()}% vision match. Sunrise starts ${c.difficulty.sunriseLead} min early.",
+                "Tomorrow's mission: $target. Sunrise starts ${c.difficulty.sunriseLead} min early.",
                 style = RiseType.small, color = Rise.Ivory.copy(alpha = 0.8f),
             )
             Spacer(Modifier.height(6.dp))
-            Text("Trained on this phone from ${c.trainedOn} mornings on your pacts' time cards, ${c.personalMornings} of them yours. Nothing leaves the device.", style = RiseType.tiny, color = Rise.Mist)
+            Text(
+                if (c.personalMornings == 0) "Learning from the ${c.trainedOn} mornings on your pacts' time cards until it has mornings of yours. Nothing leaves the device."
+                else "Trained on this phone from ${c.trainedOn} mornings on your pacts' time cards, ${c.personalMornings} of them yours. Nothing leaves the device.",
+                style = RiseType.tiny, color = Rise.Mist,
+            )
         } else {
             Spacer(Modifier.height(6.dp))
             Text("Tap to see why", style = RiseType.tiny, color = Rise.Mist)

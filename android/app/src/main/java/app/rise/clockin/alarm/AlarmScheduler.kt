@@ -21,8 +21,21 @@ object AlarmScheduler {
     const val EXTRA_REHEARSAL = "rehearsal"
     private const val REQ = 4207
 
-    /** Epoch millis of the next wake time for this profile. */
+    /**
+     * Epoch millis of the next wake time. While a pact is running, the alarm follows the
+     * pact's on-chain target for your next morning, which is fixed in UTC: a daylight-saving
+     * change or a flight can't move the alarm away from the window the program will check.
+     * With no pact, it's your wake time in local time.
+     */
     fun nextWake(p: Profile, now: LocalDateTime = LocalDateTime.now()): Long {
+        val nowMs = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val lead = p.sunriseLead * 60_000L
+        val onChain = app.rise.clockin.data.Store.state.value.pacts.mapNotNull { v ->
+            val me = v.me ?: return@mapNotNull null
+            if (v.pact.isOver(nowMs / 1000)) return@mapNotNull null
+            (me.firstDay until v.pact.days).map { d -> me.target(v.pact, d) * 1000 }.firstOrNull { it - lead > nowMs && !me.isIn(((it / 1000 - v.pact.startTs) / v.pact.daySecs).toInt()) }
+        }.minOrNull()
+        if (onChain != null) return onChain
         val t = LocalTime.of(p.wakeMinutes / 60, p.wakeMinutes % 60)
         var at = LocalDateTime.of(LocalDate.now(), t)
         if (!at.minusMinutes(p.sunriseLead.toLong()).isAfter(now)) at = at.plusDays(1)

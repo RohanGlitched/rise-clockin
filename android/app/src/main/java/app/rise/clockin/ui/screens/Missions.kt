@@ -297,6 +297,29 @@ fun Context.hasSensor(type: Int) = getSystemService(SensorManager::class.java).g
 // ------------------------------------------------------------------ Show the morning (on-device AI)
 
 /** Labels that mean "you're up and somewhere morning-ish": daylight, outdoors, or breakfast things. */
+/** Labels that say the camera is covered, pointed at a screen, or in the dark. */
+private val NOT_MORNING = setOf("Monochrome", "Space", "Screenshot", "Darkness", "Night", "Black")
+/** Mean luma (0–255) below which a frame can't be daylight, whatever the labeler thinks. */
+private const val DARK_LUMA = 55f
+
+private fun meanLuma(b: android.graphics.Bitmap): Float {
+    val step = maxOf(1, b.width / 32)
+    var sum = 0L
+    var n = 0
+    var y = 0
+    while (y < b.height) {
+        var x = 0
+        while (x < b.width) {
+            val c = b.getPixel(x, y)
+            sum += (299 * ((c shr 16) and 255) + 587 * ((c shr 8) and 255) + 114 * (c and 255)) / 1000
+            n++
+            x += step
+        }
+        y += step
+    }
+    return if (n == 0) 0f else sum.toFloat() / n
+}
+
 private val MORNING_LABELS = setOf(
     "Sky", "Cloud", "Sunset", "Window", "Tree", "Plant", "Flower", "Building", "Skyscraper", "Road",
     "Cup", "Coffee", "Tableware", "Mug", "Bottle", "Sink", "Bathroom", "Kitchen", "Food", "Bread",
@@ -318,9 +341,15 @@ fun PhotoMission(onDone: () -> Unit, modifier: Modifier = Modifier, minConfidenc
     var finished by remember { mutableStateOf(false) }
     // Some phones take many seconds to open the camera; say so instead of showing a black box.
     var live by remember { mutableStateOf(false) }
+    // A covered lens or a phone under the covers labels as "Sky" surprisingly often. Brightness decides.
+    var dark by remember { mutableStateOf(false) }
+    var frames by remember { mutableIntStateOf(0) }
+    val provider = remember { arrayOfNulls<ProcessCameraProvider>(1) }
+    DisposableEffect(Unit) { onDispose { runCatching { provider[0]?.unbindAll() } } }
     val hasCamera = context.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
     if (!hasCamera) { MissingSensor("Rise needs the camera for this mission. Allow it in You, or switch mission."); return }
-    val match = seen.firstOrNull { it.first in MORNING_LABELS && it.second >= minConfidence }
+    // The first frames come out of a warming sensor; don't let them count.
+    val match = if (dark || frames < 8) null else seen.firstOrNull { it.first in MORNING_LABELS && it.second >= minConfidence }
     val matching by rememberUpdatedState(match != null)
     // Hold a morning scene for 3 seconds; a stray frame slows the fill instead of resetting it.
     LaunchedEffect(Unit) {
@@ -341,7 +370,8 @@ fun PhotoMission(onDone: () -> Unit, modifier: Modifier = Modifier, minConfidenc
                     val view = PreviewView(ctx)
                     val providerFuture = ProcessCameraProvider.getInstance(ctx)
                     providerFuture.addListener({
-                        val provider = providerFuture.get()
+                        val camera = providerFuture.get()
+                        provider[0] = camera
                         val preview = Preview.Builder().build().also { it.surfaceProvider = view.surfaceProvider }
                         val labeler = com.google.mlkit.vision.label.ImageLabeling.getClient(
                             com.google.mlkit.vision.label.defaults.ImageLabelerOptions.Builder().setConfidenceThreshold(0.3f).build(),
@@ -352,20 +382,23 @@ fun PhotoMission(onDone: () -> Unit, modifier: Modifier = Modifier, minConfidenc
                             if (img == null || finished) { proxy.close(); return@setAnalyzer }
                             if (!live) ContextCompat.getMainExecutor(ctx).execute { live = true }
                             // A bitmap keeps colour conversion consistent across camera HALs (some emit odd YUV strides).
-                            val frame = runCatching { InputImage.fromBitmap(proxy.toBitmap(), proxy.imageInfo.rotationDegrees) }
-                                .getOrElse { InputImage.fromMediaImage(img, proxy.imageInfo.rotationDegrees) }
+                            val bitmap = runCatching { proxy.toBitmap() }.getOrNull()
+                            val luma = bitmap?.let { meanLuma(it) } ?: 128f
+                            val frame = bitmap?.let { InputImage.fromBitmap(it, proxy.imageInfo.rotationDegrees) }
+                                ?: InputImage.fromMediaImage(img, proxy.imageInfo.rotationDegrees)
                             labeler.process(frame)
                                 .addOnFailureListener { e -> android.util.Log.w("RiseVision", "labeling failed", e) }
                                 .addOnSuccessListener { labels ->
                                     android.util.Log.d("RiseVision", "labels: " + labels.joinToString { it.text + "=" + it.confidence })
                                     val top = labels.sortedByDescending { it.confidence }.take(4).map { it.text to it.confidence }
-                                    top.filter { it.first in MORNING_LABELS }.forEach { trace?.vision(it.first, it.second) }
-                                    ContextCompat.getMainExecutor(ctx).execute { seen = top }
+                                    val tooDark = luma < DARK_LUMA || top.any { it.first in NOT_MORNING && it.second >= 0.6f }
+                                    if (!tooDark) top.filter { it.first in MORNING_LABELS }.forEach { trace?.vision(it.first, it.second) }
+                                    ContextCompat.getMainExecutor(ctx).execute { seen = top; dark = tooDark; frames++ }
                                 }
                                 .addOnCompleteListener { proxy.close() }
                         }
-                        provider.unbindAll()
-                        provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
+                        camera.unbindAll()
+                        camera.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
                     }, ContextCompat.getMainExecutor(ctx))
                     view
                 },
@@ -387,7 +420,7 @@ fun PhotoMission(onDone: () -> Unit, modifier: Modifier = Modifier, minConfidenc
             verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
         ) {
             seen.forEach { (label, conf) ->
-                val ok = label in MORNING_LABELS && conf >= minConfidence
+                val ok = !dark && label in MORNING_LABELS && conf >= minConfidence
                 Box(
                     Modifier.clip(RoundedCornerShape(14.dp)).background(if (ok) Rise.Moss.copy(alpha = 0.25f) else Rise.Ivory.copy(alpha = 0.1f))
                         .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -402,6 +435,7 @@ fun PhotoMission(onDone: () -> Unit, modifier: Modifier = Modifier, minConfidenc
         Spacer(Modifier.height(12.dp))
         Text(
             when {
+                dark && live -> "Too dark to be morning. Open the curtains or turn to the window."
                 match != null -> "That's the morning. Hold it…"
                 fill > 0f -> "Keep it in view…"
                 else -> "Show me daylight, a window or your coffee."

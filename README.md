@@ -13,7 +13,11 @@
 
 **[Download the APK](https://rise-clockin.vercel.app/rise.apk)** · **[Website & live pacts](https://rise-clockin.vercel.app)** · **[Program on Explorer](https://explorer.solana.com/address/6kQL7PccHpE7yUrsq5TgxFgQc7K7FVbUJShRUPbWfCdS?cluster=devnet)** · **[Pitch deck](https://rise-clockin.vercel.app/rise-pitch-deck.pdf)**
 
-**[Verify it yourself](VERIFY.md)** · **[Settlement proof on devnet](docs/SETTLEMENT.md)** · **[Security & anti-cheat](SECURITY.md)**
+**[Demo video (3 min)](https://youtu.be/cIDrxsqdEnc)** · **[Verify it yourself](VERIFY.md)** · **[Settlement proof on devnet](docs/SETTLEMENT.md)** · **[Security & anti-cheat](SECURITY.md)**
+
+<br>
+
+<a href="https://youtu.be/cIDrxsqdEnc"><img src="https://i.ytimg.com/vi/cIDrxsqdEnc/maxresdefault.jpg" alt="Watch the Rise demo: the alarm, the mission, the clock-in on a real phone" width="720"></a>
 
 </div>
 
@@ -75,6 +79,7 @@ Code: [`ai/WakeCoach.kt`](android/app/src/main/java/app/rise/clockin/ai/WakeCoac
 ## How it works
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#1b2250','primaryTextColor':'#f6f1e7','primaryBorderColor':'#ffd166','lineColor':'#ffb877','secondaryColor':'#2b2452','tertiaryColor':'#0e1430','actorBkg':'#1b2250','actorBorder':'#ffd166','actorTextColor':'#f6f1e7','signalColor':'#ffb877','signalTextColor':'#f6f1e7','noteBkgColor':'#ede3cc','noteTextColor':'#1f2747','noteBorderColor':'#c9b993','clusterBkg':'#0e1430','clusterBorder':'#3c2f63','edgeLabelBackground':'#0e1430','fontFamily':'Bricolage Grotesque, system-ui, sans-serif'}}}%%
 sequenceDiagram
     autonumber
     participant A as Rise (Android)
@@ -123,10 +128,12 @@ Payouts always sum to exactly what was deposited, so the vault can pay every cla
 ## Architecture
 
 ```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#1b2250','primaryTextColor':'#f6f1e7','primaryBorderColor':'#ffd166','lineColor':'#ffb877','secondaryColor':'#2b2452','tertiaryColor':'#0e1430','actorBkg':'#1b2250','actorBorder':'#ffd166','actorTextColor':'#f6f1e7','signalColor':'#ffb877','signalTextColor':'#f6f1e7','noteBkgColor':'#ede3cc','noteTextColor':'#1f2747','noteBorderColor':'#c9b993','clusterBkg':'#0e1430','clusterBorder':'#3c2f63','edgeLabelBackground':'#0e1430','fontFamily':'Bricolage Grotesque, system-ui, sans-serif'}}}%%
 flowchart TB
     subgraph Phone["Android app (Kotlin + Compose)"]
         AL["Alarm service<br/>sunrise, ring, spoken stakes"]
-        MS["Missions<br/>light, steps, QR"]
+        MS["Missions<br/>light, steps, QR, vision"]
+        AI["Rise AI<br/>coach, proof scoring"]
         WA["Wallet<br/>MWA, Seed Vault or practice key"]
     end
     subgraph Chain["Solana devnet"]
@@ -139,6 +146,7 @@ flowchart TB
         SGT["Seeker API<br/>SIWS + Genesis Token check"]
     end
     AL --> MS --> WA
+    AI --> MS
     WA -->|create_pact, join, clock_in, claim| PR
     PR <--> SKR
     WA -.->|invite links| SITE
@@ -196,7 +204,7 @@ Deployed addresses (devnet):
 ```bash
 anchor build
 npm ci
-npm test            # 6 tests: faucet, validation, a full pact, late join, refunds, auth
+npm test            # 84 tests: windows to the second, payout conservation over hundreds of random pacts, every mint extension, authorisation
 ```
 
 **Build the app** (JDK 21, Android SDK):
@@ -234,14 +242,15 @@ docs/               Screenshots and README artwork
 
 ## Testing
 
-The program is tested end to end on Bankrun, moving the clock through whole pacts:
+**84 Bankrun tests** (`npm test`, about a minute) move Solana's clock through whole pacts:
 
-- the faucet drips once per hour per wallet
-- invalid settings are rejected (length, grace, start time)
-- a 3-member, 3-morning pact: early, late and missed clock-ins, windows that haven't opened or have closed, double clock-ins, streaks, and exact payouts that drain the vault to zero
-- late joiners lock stakes only for the mornings left, and a joiner whose window hasn't opened yet still counts today
-- everyone is refunded when nobody wakes up
-- nobody can clock in for someone else
+- **Windows to the second:** opens exactly 30 minutes before the wake time, closes exactly at wake + grace, closed in between, one clock-in per window, the final window and the first claim second.
+- **Payout conservation:** 40 random pacts per run (261 members, 880 clock-ins on the default seed; `npm run test:fuzz` does 300) settle exactly by the formula and leave only rounding dust in the vault. Shortest and longest presets, nobody-woke refunds, everyone-kept, late joiners, double claims.
+- **Mint guard:** TransferFee, PermanentDelegate, TransferHook, NonTransferable, frozen-by-default, MintCloseAuthority, InterestBearing and ConfidentialTransfer mints are each refused; metadata and group pointers are accepted; a classic SPL mint settles end to end.
+- **Authorisation:** nobody can clock in, claim or redirect a payout for anyone else, across pacts or vaults.
+- **Settings, membership, faucet, events and a compute-unit snapshot** per instruction (clock_in is 18k CU).
+
+Two tests are intentionally pending as documented known issues; see the audit section of [SECURITY.md](SECURITY.md).
 
 CI runs these tests, builds and lints the Android app, and checks the web API on every push.
 
@@ -249,7 +258,10 @@ CI runs these tests, builds and lints the Android app, and checks the web API on
 
 ## Honest limits
 
-Rise proves *when* you clocked in on chain; the mission proves *that* you got up on the device. A determined cheat could fake sensor readings on a rooted phone. Pacts are with friends, so the social layer does the rest, and the time card makes every morning visible to everyone in the pact. Rise currently runs on devnet with test SKR.
+- Rise proves *when* you clocked in on chain; the mission proves *that* you got up on the device. A determined cheat could fake sensor readings on a rooted phone. Pacts are with friends, so the social layer does the rest, and the time card makes every morning visible to everyone in the pact.
+- The pot is split by mornings kept over the whole pact, so someone who joins on the last morning and clocks in shares forfeits made before they arrived. Honest members never lose their deposit, only part of the bonus. The next program version splits each morning's forfeits among that morning's keepers only ([SECURITY.md](SECURITY.md) has the test that documents it).
+- The program is upgradeable on devnet so it could be fixed during the hackathon; before real SKR the upgrade key moves to a multisig or is burned.
+- Rise currently runs on devnet with test SKR.
 
 <br>
 

@@ -130,9 +130,14 @@ fun YouTab(nav: Nav) {
                         Column { Text("%.3f".format(state.sol / 1e9), style = RiseType.amount, color = Rise.Ivory); Text("devnet SOL", style = RiseType.tiny, color = Rise.Mist) }
                     }
                     Spacer(Modifier.height(14.dp))
-                    SunButton("Get 500 test SKR", busy = busy == "drip", busyText = "Sending test SKR", onClick = {
-                        run("drip") { Store.getTestTokens(sender); message = "500 test SKR are in your wallet." to true }
-                    }, modifier = Modifier.fillMaxWidth())
+                    val dripWait = Store.nextDripInMinutes()
+                    if (dripWait > 0 && busy != "drip") {
+                        GhostButton("Next 500 test SKR in $dripWait min", {}, Modifier.fillMaxWidth(), enabled = false)
+                    } else {
+                        SunButton("Get 500 test SKR", busy = busy == "drip", busyText = "Sending test SKR", onClick = {
+                            run("drip") { Store.getTestTokens(sender); message = "500 test SKR are in your wallet." to true }
+                        }, modifier = Modifier.fillMaxWidth())
+                    }
                     if (state.kind == WalletKind.Phone && profile.seekerMint == null) {
                         Spacer(Modifier.height(10.dp))
                         GhostButton(if (busy == "seeker") "Checking your Seeker…" else "Verify my Seeker", {
@@ -162,7 +167,7 @@ fun YouTab(nav: Nav) {
                 })
             }
             if (editWake && locking == null) SunDial(wakeDraft, { wakeDraft = it }, Modifier.fillMaxWidth())
-            SettingRow("Sunrise light", "The screen glows ${profile.sunriseLead} min before the alarm, like a sunrise lamp.") {
+            SettingRow("Sunrise light", "The screen starts glowing ${profile.sunriseLead} min before the alarm, like a sunrise lamp. Rise Coach starts it earlier on risky mornings.") {
                 Chips(listOf(0, 5, 10, 15), profile.sunriseLead, { "$it" }) { v -> Store.updateProfile { it.copy(sunriseLead = v) } }
             }
             SettingRow("Speak the stakes", "Reads out who's up and what's on the line.") {
@@ -200,7 +205,25 @@ fun YouTab(nav: Nav) {
             )
             TextAction("Rise program on Solana Explorer", { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.explorerAddress(Config.PROGRAM.toBase58())))) })
             Spacer(Modifier.height(10.dp))
-            GhostButton("Sign out", { Store.signOut() }, Modifier.fillMaxWidth())
+            var confirmSignOut by remember { mutableStateOf(false) }
+            GhostButton("Sign out", { confirmSignOut = true }, Modifier.fillMaxWidth())
+            if (confirmSignOut) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { confirmSignOut = false },
+                    containerColor = Rise.NightDeep,
+                    title = { Text("Sign out of Rise?", style = RiseType.heading, color = Rise.Ivory) },
+                    text = {
+                        Text(
+                            if (state.kind == WalletKind.Practice)
+                                "This erases the practice wallet on this phone. Any SKR it has locked in pacts can't be collected without it."
+                            else "Your wallet keeps your keys. Rise only forgets this phone's profile and alarm.",
+                            style = RiseType.body, color = Rise.Ivory.copy(alpha = 0.85f),
+                        )
+                    },
+                    confirmButton = { TextAction(if (state.kind == WalletKind.Practice) "Erase and sign out" else "Sign out", { confirmSignOut = false; Store.signOut() }, color = Rise.Rose) },
+                    dismissButton = { TextAction("Keep it", { confirmSignOut = false }, color = Rise.Ivory) },
+                )
+            }
             BottomBarSpace()
         }
     }

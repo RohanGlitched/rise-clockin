@@ -84,6 +84,13 @@ class AlarmService : Service() {
         fun shown(context: Context) { if (_state.value.phase != AlarmPhase.Idle) context.startService(Intent(context, AlarmService::class.java).setAction(ACTION_SHOWN)) }
         fun stop(context: Context) = context.startService(Intent(context, AlarmService::class.java).setAction(ACTION_STOP))
 
+        /** "Good morning" until noon, so a 4 pm rehearsal doesn't lie. */
+        fun greeting(hour: Int = java.time.LocalTime.now().hour): String = when (hour) {
+            in 4..11 -> "Good morning"
+            in 12..16 -> "Good afternoon"
+            else -> "Good evening"
+        }
+
         fun ensureChannel(context: Context) {
             val nm = context.getSystemService(NotificationManager::class.java)
             if (nm.getNotificationChannel(CHANNEL) == null) {
@@ -108,13 +115,15 @@ class AlarmService : Service() {
     private var ringJob: Job? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var focus: AudioFocusRequest? = null
+    /** True once the alarm screen reported itself visible; until then the loud notification stays. */
+    private var seen = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> { finish(); return START_NOT_STICKY }
-            ACTION_SHOWN -> { getSystemService(NotificationManager::class.java).notify(NOTE_ID, note(QUIET, fullScreen = false)); return START_NOT_STICKY }
+            ACTION_SHOWN -> { seen = true; getSystemService(NotificationManager::class.java).notify(NOTE_ID, note(QUIET, fullScreen = false)); return START_NOT_STICKY }
             ACTION_MISSION -> { quiet(); _state.value = _state.value.copy(phase = AlarmPhase.Mission); return START_NOT_STICKY }
         }
         Store.init(this)
@@ -124,6 +133,7 @@ class AlarmService : Service() {
         startInForeground()
         wakeLock = getSystemService(PowerManager::class.java)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "rise:alarm").apply { acquire(30 * 60_000L) }
+        seen = false
         _state.value = AlarmState(AlarmPhase.Sunrise, wakeAt, rehearsal, System.currentTimeMillis())
         tts = TextToSpeech(this) { ok ->
             ttsReady = ok == TextToSpeech.SUCCESS
@@ -152,8 +162,8 @@ class AlarmService : Service() {
         )
         return NotificationCompat.Builder(this, channel)
             .setSmallIcon(R.drawable.ic_sun)
-            .setContentTitle("Rise and clock in")
-            .setContentText("Your wake window is open.")
+            .setContentTitle(if (_state.value.rehearsal) "Rehearsal: Rise is ringing" else "Rise and clock in")
+            .setContentText(if (_state.value.rehearsal) "A practice run. Nothing is on the line." else "Your wake window is open. Finish your mission to clock in.")
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(if (fullScreen) NotificationCompat.PRIORITY_MAX else NotificationCompat.PRIORITY_LOW)
             .apply { if (fullScreen) setFullScreenIntent(full, true) }
@@ -188,6 +198,12 @@ class AlarmService : Service() {
 
     private fun ring() {
         _state.value = _state.value.copy(phase = AlarmPhase.Ringing)
+        if (!seen) {
+            // The sunrise screen never made it to the front (a locked OEM phone, or the full-screen
+            // intent was dropped). Post the loud notification again and try the screen once more.
+            getSystemService(NotificationManager::class.java).notify(NOTE_ID, note(CHANNEL, fullScreen = true))
+            runCatching { startActivity(Intent(this, AlarmActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        }
         val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
         val am = getSystemService(AudioManager::class.java)
         focus = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT).setAudioAttributes(attrs).build().also { am.requestAudioFocus(it) }
@@ -237,9 +253,10 @@ class AlarmService : Service() {
         val now = System.currentTimeMillis() / 1000
         val time = Instant.now().atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("h:mm"))
         val name = p.name.ifBlank { "there" }
-        if (_state.value.rehearsal) return "Good morning, $name. It's $time. This is a rehearsal. Tomorrow, your stake is on the line."
+        val hello = greeting()
+        if (_state.value.rehearsal) return "$hello, $name. It's $time. This is a rehearsal. Tomorrow, your stake is on the line."
         val open = Store.openForClockIn(now)
-        if (open.isEmpty()) return "Good morning, $name. It's $time. Time to rise."
+        if (open.isEmpty()) return "$hello, $name. It's $time. Time to rise."
         val stake = open.sumOf { it.pact.stakePerDay } / 1_000_000
         val up = open.flatMap { v ->
             val day = v.pact.dayIndex(now)
@@ -251,8 +268,9 @@ class AlarmService : Service() {
             2 -> "${up[0]} and ${up[1]} are already up."
             else -> "${up[0]}, ${up[1]} and ${up.size - 2} more are already up."
         }
-        return "Good morning, $name. It's $time. $friends $stake SKR is on the line."
+        return "$hello, $name. It's $time. $friends $stake SKR is on the line."
     }
+
 
     private fun speak(line: String) {
         val t = tts ?: return

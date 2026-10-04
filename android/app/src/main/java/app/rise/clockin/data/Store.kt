@@ -175,6 +175,8 @@ object Store {
             val report = withContext(Dispatchers.Default) { app.rise.clockin.ai.WakeCoach.report(views, address, now) }
             app.rise.clockin.ai.WakeCoach.current = report
             _coach.value = report
+            // Pacts may have moved the next morning: re-plan the alarm from the on-chain targets.
+            runCatching { app.rise.clockin.alarm.AlarmScheduler.schedule(appContext, profile.value) }
         } catch (e: Exception) {
             _state.update { it.copy(loading = false, loadedOnce = true, error = RiseProgram.explain(e)) }
         }
@@ -213,8 +215,16 @@ object Store {
         } catch (e: Exception) {
             android.util.Log.w("Rise", "drip failed", e); throw e
         }
+        prefs.edit().putLong("drip_at", System.currentTimeMillis()).apply()
         refresh()
         return sig
+    }
+
+    /** Minutes until the faucet will serve this phone again, 0 when it will now. Mirrors the on-chain hourly ticket. */
+    fun nextDripInMinutes(): Int {
+        val at = prefs.getLong("drip_at", 0)
+        val left = at + 60 * 60_000L - System.currentTimeMillis()
+        return if (left <= 0) 0 else ((left + 59_999) / 60_000).toInt()
     }
 
     private suspend fun requestSol(address: String) = withContext(Dispatchers.IO) {
@@ -254,7 +264,7 @@ object Store {
         val p = profile.value
         val ixs = listOf(
             RiseProgram.createPact(owner, seed, name, stake, start, Config.DAY, days, 600, 50, public),
-            RiseProgram.join(owner, pactKey, p.name.ifBlank { "Me" }.take(20), p.avatar, wakeOffsetFor(stub)),
+            RiseProgram.join(owner, pactKey, p.name.ifBlank { "Me" }.utf8Take(20), p.avatar, wakeOffsetFor(stub)),
         )
         wallet.send(ixs, sender)
         refresh()
@@ -264,7 +274,7 @@ object Store {
     suspend fun join(pact: Pact, sender: ActivityResultSender?): String {
         val address = wallet.address ?: throw IOException("Connect a wallet first.")
         val p = profile.value
-        val sig = wallet.send(listOf(RiseProgram.join(PublicKey(address), PublicKey(pact.address), p.name.ifBlank { "Me" }.take(20), p.avatar, wakeOffsetFor(pact))), sender)
+        val sig = wallet.send(listOf(RiseProgram.join(PublicKey(address), PublicKey(pact.address), p.name.ifBlank { "Me" }.utf8Take(20), p.avatar, wakeOffsetFor(pact))), sender)
         refresh()
         return sig
     }
@@ -311,4 +321,11 @@ object Store {
         updateProfile { it.copy(seekerMint = mint) }
         return mint
     }
+}
+
+/** The program limits names by UTF-8 bytes, not characters; keep whole characters within the budget. */
+fun String.utf8Take(maxBytes: Int): String {
+    var out = this
+    while (out.isNotEmpty() && out.toByteArray(Charsets.UTF_8).size > maxBytes) out = out.dropLast(1)
+    return out
 }

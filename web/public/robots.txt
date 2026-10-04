@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://rise-clockin.vercel.app/sitemap.xml

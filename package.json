@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "test": "bash scripts/test.sh",
+    "test:ci": "TS_NODE_TRANSPILE_ONLY=1 NODE_OPTIONS=--no-experimental-strip-types ts-mocha -p ./tsconfig.json -t 1000000 'tests/*.ts'",
+    "test:fuzz": "RISE_TRIALS=300 RISE_SEED=${RISE_SEED:-1} bash scripts/test.sh tests/payouts.ts",
     "build:scripts": "bash scripts/build-scripts.sh"
   },
   "dependencies": {

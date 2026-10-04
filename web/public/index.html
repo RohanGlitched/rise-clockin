@@ -3,12 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rise Alarm</title>
-<meta name="description" content="Rise is an Android alarm for Solana Seeker. Wake up and clock in on chain before your window closes, or your SKR is split among the friends who made it.">
+<title>Rise · The alarm your friends are betting on</title>
+<meta name="description" content="Rise is an Android alarm for Solana Seeker. Finish a real-world mission, clock in on chain before your window closes, or your SKR is split among the friends who made it.">
 <meta name="theme-color" content="#0e1430">
-<meta property="og:title" content="Rise">
-<meta property="og:description" content="The alarm your friends are betting on. Clock in on Solana, or pay the pot.">
+<meta property="og:title" content="Rise · The alarm your friends are betting on">
+<meta property="og:description" content="Clock in on Solana before your wake window closes, or pay the pot. Built natively for Seeker.">
 <meta property="og:image" content="https://rise-clockin.vercel.app/og.png">
+<meta property="og:url" content="https://rise-clockin.vercel.app">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Doto:wght@700;900&display=swap" rel="stylesheet">
@@ -22,63 +24,181 @@
     <path d="M0 90 C200 60 320 100 520 78 S860 60 1000 85 1150 70 1200 80 V120 H0Z" fill="#120e22"/>
   </svg>
   <div class="wrap">
-    <nav><span class="dot"></span><b>Rise</b><span class="grow"></span><a class="small" href="#how">How it works</a><a class="small" href="#live">Live pacts</a></nav>
+    <nav>
+      <span class="dot"></span><b>Rise</b><span class="grow"></span>
+      <a class="small" href="#morning">A morning</a>
+      <a class="small" href="#live">Live pacts</a>
+      <a class="small" href="#ai">On-device AI</a>
+      <a class="small" href="#proof">Proof</a>
+      <a class="small" href="https://github.com/RohanGlitched/rise-clockin">GitHub</a>
+    </nav>
     <div class="hero">
       <div>
         <h1>The alarm your friends are betting on.</h1>
-        <p class="lede">Wake up and clock in on Solana before your window closes. Sleep in, and your SKR is split among the friends who made it.</p>
+        <p class="lede">Friends lock SKR in a pact. Every morning the alarm only stops when you finish a real-world mission, then you clock in on Solana before your window closes. Sleep in, and that morning's SKR is split among the friends who made it.</p>
         <div class="cta">
           <a class="btn" href="/rise.apk" download>Download for Android</a>
-          <a class="btn ghost" href="#live">See live pacts</a>
+          <a class="btn ghost" href="#watch">Watch the 3-minute demo</a>
         </div>
-        <p class="note">Built for Solana Seeker; runs on any Android 9 or newer. Uses Solana devnet and test SKR, so trying it costs nothing.</p>
+        <p class="note">Built for Solana Seeker; runs on any Android 9 or newer. Devnet and test SKR, so trying it costs nothing. 43 MB.</p>
+        <div class="qr">
+          <img src="/qr-apk.svg" alt="QR code that downloads the Rise APK" width="96" height="96">
+          <div><b>On a laptop?</b><span>Point your phone's camera here to install Rise in a minute.</span></div>
+        </div>
       </div>
       <div class="phone"><img src="/shot-today.jpg" alt="Rise on a phone: tomorrow's alarm in dot-matrix digits above the pact's time card"></div>
     </div>
   </div>
 </header>
 
-<section class="band" id="how">
+<section class="band" id="morning">
   <div class="wrap">
-    <h2>An alarm with something on the line.</h2>
+    <h2>A morning with Rise</h2>
+    <p class="sub">Five minutes, start to stamp. Nothing here is a mock-up: these are screens from a OnePlus 10T on Solana devnet.</p>
+    <img class="strip" src="/strip-morning.webp" alt="Sunrise lead-in, the alarm ringing with the stakes, the light mission, and the clock-in stamp" width="1578" height="823" loading="lazy">
+    <ol class="moments">
+      <li><b>Sunrise.</b> Minutes before your wake time the alarm takes over the lock screen and the screen warms like a sunrise lamp. The sky is a real-time GPU shader moving from night to dawn.</li>
+      <li><b>The stakes, out loud.</b> At your wake time the tone climbs to full volume and the phone speaks: "Good morning, Rohan. It's 6:30. Aman and Priya are already up. 10 SKR is on the line."</li>
+      <li><b>Prove you're up.</b> Slide the sun to start your mission. The light sensor must read daylight, the step detector must count 30 steps, the camera must scan your wake-spot code, or on-device vision must see a morning scene.</li>
+      <li><b>Clock in.</b> One signature through Mobile Wallet Adapter. The program checks Solana's clock: only between 30 minutes before your wake time and the end of the grace period.</li>
+      <li><b>The stamp.</b> Your time is punched onto the pact's manila time card with a heavy haptic thump. Blue-black ink on time, red when late, a hole punched through for a missed morning.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="band tight" id="how">
+  <div class="wrap">
+    <h2>How the pot works</h2>
     <p class="sub">Snooze wins because nothing is at stake. Rise puts your SKR and your friends behind every morning.</p>
     <div class="steps">
-      <div class="step"><div class="n">1</div><h3>Set your wake time</h3><p>Drag the sun around the dial and pick a mission: find daylight, walk 30 steps, or scan the code by your kettle.</p></div>
-      <div class="step"><div class="n">2</div><h3>Make a pact</h3><p>Friends lock SKR for each morning. Your wake window opens 30 minutes before your time and closes after a short grace period.</p></div>
-      <div class="step"><div class="n">3</div><h3>Clock in on chain</h3><p>Finish the mission, sign once, and Solana's clock stamps your card. Missed mornings fill the pot, split by mornings kept.</p></div>
+      <div class="step"><div class="n">1</div><h3>Set your wake time</h3><p>Drag the sun around the dial and pick a mission. Rise Coach adjusts how hard the mission is to how likely you are to oversleep.</p></div>
+      <div class="step"><div class="n">2</div><h3>Make a pact</h3><p>Friends lock SKR for each morning, 3 to 30 mornings long. Invite with a QR code or a link. Late joiners lock stakes only for the mornings left.</p></div>
+      <div class="step"><div class="n">3</div><h3>Clock in on chain</h3><p>Finish the mission, sign once, and Solana's clock stamps your card. When the pact ends, kept mornings earn your stake back and the pot is split by mornings kept.</p></div>
+    </div>
+    <div class="formula">
+      <div><span>pot</span><b>everything locked − stake × mornings kept by everyone</b></div>
+      <div><span>your payout</span><b>stake × mornings you kept + your share of the pot</b></div>
+      <p>Payouts always add up to exactly what was locked. If nobody wakes up at all, everyone is refunded. There is no admin key, no fee and no way for anyone, including us, to move SKR out of a pact.</p>
     </div>
   </div>
 </section>
 
-<section class="band" id="live" style="padding-top:20px">
+<section class="band" id="live">
   <div class="wrap">
     <h2>Live from Solana devnet</h2>
-    <p class="sub">These time cards are read straight from the Rise program as the page loads. Blue ink is on time, red is late, holes are missed mornings.</p>
-    <div class="live" id="cards"><p class="empty">Reading pacts from devnet…</p></div>
+    <p class="sub">These time cards are read straight from the Rise program as the page loads. Blue ink is on time, red is late, holes are missed mornings. Tap a card to join.</p>
+    <p class="stats" id="stats" aria-live="polite"></p>
+    <div class="live" id="cards"><div class="card skel"></div><div class="card skel"></div><div class="card skel"></div></div>
+    <p class="finished" id="finished"></p>
+  </div>
+</section>
+
+<section class="band tight" id="ai">
+  <div class="wrap">
+    <h2>Rise AI, on the device</h2>
+    <p class="sub">Three models run on the phone. No camera frame, sensor trace or model ever leaves it.</p>
+    <div class="steps">
+      <div class="step"><h3>Rise Coach</h3><p>A logistic-regression model trained on the phone from the public time cards of every pact you're in, weighted toward your own mornings. It predicts tomorrow's chance you oversleep and sets the mission to Gentle, Normal or Tough, and says why.</p></div>
+      <div class="step"><h3>Show the morning</h3><p>A fourth mission: the camera feeds ML Kit's on-device image labeler, and the alarm stops only when it sees a morning scene, held for three seconds, above the coach's confidence threshold.</p></div>
+      <div class="step"><h3>Proof anomaly scoring</h3><p>Real sensors are noisy; spoofed ones come in exact steps or metronome-perfect strides. Every mission's trace is scored, and the confidence is written on chain with the clock-in, so a pact sees how each morning was proven.</p></div>
+    </div>
+    <img class="strip" src="/strip-pacts.webp" alt="Open pacts, a pact's time card with the join summary, the profile and wallet, and the onboarding faucet" width="1578" height="823" loading="lazy">
+  </div>
+</section>
+
+<section class="band tight" id="seeker">
+  <div class="wrap">
+    <h2>Built for Seeker</h2>
+    <dl class="rows">
+      <div><dt>Mobile Wallet Adapter 2.0</dt><dd>Every pact action is signed by the wallet: Seed Vault on Seeker, Phantom or Solflare elsewhere. Sign-and-send with a sign-only fallback, stale sessions re-authorised, every transaction simulated before the wallet opens. App identity verified through Digital Asset Links.</dd></div>
+      <div><dt>Seeker Genesis Token</dt><dd>Sign in with Solana, then the server checks the wallet for an SGT on mainnet. Mint authority, metadata pointer and group membership must all match. Verified owners get a badge; community pacts can keep seats one per device.</dd></div>
+      <div><dt>SKR, moving every morning</dt><dd>SKR is the stake and the reward of every pact. It moves between friends based on who gets up, so it is used daily instead of sitting still. No staking involved.</dd></div>
+      <div><dt>Phone hardware as proof</dt><dd>Ambient light sensor, step detector, camera with on-device scanning and labeling, exact alarms, lock-screen alarm, haptics and text-to-speech. None of this works in a browser, which is why Rise is native Kotlin and Compose.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section class="band" id="watch">
+  <div class="wrap">
+    <h2>Watch it wake someone up</h2>
+    <p class="sub">Three minutes: the alarm, the mission, the clock-in on a real phone, the on-device AI and the settlement proof.</p>
+    <div class="video" id="video" role="button" tabindex="0" aria-label="Play the Rise demo video">
+      <img src="https://i.ytimg.com/vi/cIDrxsqdEnc/maxresdefault.jpg" alt="" onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/cIDrxsqdEnc/hqdefault.jpg'">
+      <span class="play" aria-hidden="true"></span>
+    </div>
+    <div class="cta"><a class="btn ghost" href="/rise-pitch-deck.pdf">Read the pitch deck</a><a class="btn ghost" href="https://youtu.be/cIDrxsqdEnc">Open on YouTube</a></div>
+  </div>
+</section>
+
+<section class="band tight" id="proof">
+  <div class="wrap">
+    <h2>Check it yourself</h2>
+    <p class="sub">Every claim above has an address, a transaction or a test behind it.</p>
+    <dl class="rows proof">
+      <div><dt>Rise program</dt><dd><a class="mono" href="https://explorer.solana.com/address/6kQL7PccHpE7yUrsq5TgxFgQc7K7FVbUJShRUPbWfCdS?cluster=devnet">6kQL7PccHpE7yUrsq5TgxFgQc7K7FVbUJShRUPbWfCdS</a><span>Anchor, devnet. No admin key, no withdraw instruction, no fee.</span></dd></div>
+      <div><dt>Test SKR</dt><dd><a class="mono" href="https://explorer.solana.com/address/SKRxp6EbHDAzboW6GvwhL8ARHDU5pQLmtZEh7t4XX38?cluster=devnet">SKRxp6EbHDAzboW6GvwhL8ARHDU5pQLmtZEh7t4XX38</a><span>Token-2022 with on-chain metadata, minted by the program's own rate-limited faucet.</span></dd></div>
+      <div><dt>A real clock-in</dt><dd><a class="mono" href="https://explorer.solana.com/tx/K64SPtncP1VEJNzDBca8dCiyDFuBddUu8HSpDnFMRz8Aip4oCfV9HJdMfkCt9P78eJKYJ8nMby5wrXxMjnvksZJ?cluster=devnet">K64SPtnc…ksZJ</a><span>OnePlus 10T, signed in Phantom, 10:02:56 IST on 4 October.</span></dd></div>
+      <div><dt>Settlement</dt><dd><a href="https://github.com/RohanGlitched/rise-clockin/blob/main/docs/SETTLEMENT.md">docs/SETTLEMENT.md</a><span>Three members lock 90 SKR, clock in on time, late and not at all; an early claim is rejected; payouts of 54, 18 and 18 drain the vault to zero; a pact where nobody woke refunds everyone. Every transaction linked.</span></dd></div>
+      <div><dt>Tests and CI</dt><dd><a href="https://github.com/RohanGlitched/rise-clockin/actions">GitHub Actions</a><span>Bankrun tests move the clock through whole pacts. CI builds the program, the app and the website on every push.</span></dd></div>
+      <div><dt>The APK</dt><dd><a href="/rise.apk" download>rise.apk</a> · SHA-256 <span class="mono short" style="font-size:12px;word-break:break-all">78ac32151794cb1a99c992b5cc23ad1974649a2b0a7b3c699705b1fbf44e8c42</span><span>Signed release; the certificate matches the Digital Asset Links file this site serves.</span></dd></div>
+      <div><dt>Security</dt><dd><a href="https://github.com/RohanGlitched/rise-clockin/blob/main/SECURITY.md">SECURITY.md</a> · <a href="https://github.com/RohanGlitched/rise-clockin/blob/main/VERIFY.md">VERIFY.md</a><span>Trust boundaries, the anti-cheat table, the mint-extension guard, and how to rebuild every part from source.</span></dd></div>
+    </dl>
+    <img class="strip" src="/strip-setup.webp" alt="Welcome screen, the sun-dial wake time picker, mission choice, and the Today screen" width="1578" height="823" loading="lazy">
   </div>
 </section>
 
 <footer>
   <div class="wrap row">
     <span>Rise program: <a class="mono" id="prog" href="#"></a></span>
-    <span>Made for the Solana Mobile hackathon.</span>
+    <span><a href="https://github.com/RohanGlitched/rise-clockin">GitHub</a> · <a href="/rise-pitch-deck.pdf">Deck</a> · <a href="https://youtu.be/cIDrxsqdEnc">Demo</a> · <a href="/rise.apk" download>APK</a></span>
+    <span>Made for the Solana Mobile Clock In hackathon by Rohan Borade.</span>
   </div>
 </footer>
 
 <script type="module">
-import { loadPacts, timeCard, PROGRAM } from "/rise.js";
+import { loadPacts, timeCard, PROGRAM, isOver, skr, plural, escapeHtml } from "/rise.js";
 const prog = document.getElementById("prog");
-prog.textContent = PROGRAM;
+prog.textContent = `${PROGRAM.slice(0, 4)}…${PROGRAM.slice(-4)}`;
+prog.title = PROGRAM;
 prog.href = `https://explorer.solana.com/address/${PROGRAM}?cluster=devnet`;
 const el = document.getElementById("cards");
-try {
-  const pacts = (await loadPacts()).filter((p) => p.members.length).sort((a, b) => b.members.length - a.members.length).slice(0, 6);
-  el.innerHTML = pacts.length
-    ? pacts.map((p) => `<a href="/join/${p.address}" style="text-decoration:none">${timeCard(p)}</a>`).join("")
-    : `<p class="empty">No pacts yet. Be the first.</p>`;
-} catch {
-  el.innerHTML = `<p class="empty">Devnet didn't answer. Refresh in a moment.</p>`;
+const stats = document.getElementById("stats");
+const fin = document.getElementById("finished");
+async function showPacts() {
+  el.innerHTML = `<div class="card skel"></div><div class="card skel"></div><div class="card skel"></div>`;
+  try {
+    const all = (await loadPacts()).filter((p) => p.members.length);
+    const running = all.filter((p) => !isOver(p)).sort((a, b) => b.members.length - a.members.length).slice(0, 6);
+    const finished = all.filter((p) => isOver(p));
+    const members = all.reduce((n, p) => n + p.members.length, 0);
+    const locked = all.reduce((n, p) => n + p.totalDeposited - p.totalPaid, 0);
+    const hits = all.reduce((n, p) => n + p.totalHits, 0);
+    stats.textContent = `${plural(all.length, "pact")} · ${plural(members, "member")} · ${skr(locked)} SKR locked · ${plural(hits, "clock-in")} on chain`;
+    el.innerHTML = running.length
+      ? running.map((p) => `<a href="/join/${p.address}" style="text-decoration:none">${timeCard(p)}</a>`).join("")
+      : `<p class="empty">No pact is running right now. Start one in the app.</p>`;
+    fin.innerHTML = finished.length
+      ? `Finished: ` + finished.map((p) => `<a href="/join/${p.address}">${escapeHtml(p.name)}</a> (${plural(p.members.length, "member")}, ${plural(p.days, "morning")})`).join(" · ")
+      : "";
+  } catch {
+    el.innerHTML = `<p class="empty">Devnet didn't answer. <button class="link" id="retry">Try again</button></p>`;
+    document.getElementById("retry").addEventListener("click", showPacts);
+  }
 }
+showPacts();
+
+const video = document.getElementById("video");
+const play = () => {
+  const f = document.createElement("iframe");
+  f.src = "https://www.youtube-nocookie.com/embed/cIDrxsqdEnc?autoplay=1&rel=0";
+  f.title = "Rise demo";
+  f.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+  f.allowFullscreen = true;
+  video.replaceChildren(f);
+  video.classList.add("playing");
+};
+video.addEventListener("click", play);
+video.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); play(); } });
 </script>
 </body>
 </html>

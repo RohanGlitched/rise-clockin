@@ -29,10 +29,17 @@ enum class Need(val title: String, val why: String) {
     FullScreen("Full-screen alarm", "So the alarm takes over the screen like a clock app."),
     Motion("Physical activity", "So the Walk it off mission can count your steps."),
     Camera("Camera", "So the camera missions can see your wake spot or the morning."),
+    LockScreen("Show on the lock screen", "Xiaomi phones also need \"Show on lock screen\" and \"Display pop-up windows while running in background\" for the alarm to take over a locked phone."),
 }
 
 object Perms {
+    /** MIUI gates lock-screen activities behind its own switch, which no API can read. */
+    val isMiui: Boolean = Build.MANUFACTURER.lowercase() in setOf("xiaomi", "redmi", "poco")
+
+    private fun flags(context: Context) = context.getSharedPreferences("rise.perms", Context.MODE_PRIVATE)
+
     fun granted(context: Context, need: Need): Boolean = when (need) {
+        Need.LockScreen -> !isMiui || flags(context).getBoolean("miui_lock_opened", false)
         Need.Notifications -> Build.VERSION.SDK_INT < 33 || has(context, Manifest.permission.POST_NOTIFICATIONS)
         Need.ExactAlarms -> Build.VERSION.SDK_INT < 31 || context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
         Need.FullScreen -> Build.VERSION.SDK_INT < 34 || context.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
@@ -49,6 +56,15 @@ object Perms {
     }
 
     fun settingsIntent(context: Context, need: Need): Intent = when (need) {
+        Need.LockScreen -> {
+            // We can't read MIUI's switch, so opening its editor counts as handled; the user can re-open it from You.
+            flags(context).edit().putBoolean("miui_lock_opened", true).apply()
+            val editor = Intent("miui.intent.action.APP_PERM_EDITOR")
+                .setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity")
+                .putExtra("extra_pkgname", context.packageName)
+            if (context.packageManager.resolveActivity(editor, 0) != null) editor
+            else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+        }
         Need.ExactAlarms -> Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}"))
         Need.FullScreen -> if (Build.VERSION.SDK_INT >= 34) Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${context.packageName}"))
         else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
@@ -58,6 +74,7 @@ object Perms {
     fun needsFor(mission: Mission): List<Need> = buildList {
         add(Need.Notifications); add(Need.ExactAlarms)
         if (Build.VERSION.SDK_INT >= 34) add(Need.FullScreen)
+        if (isMiui) add(Need.LockScreen)
         if (mission == Mission.Walk && Build.VERSION.SDK_INT >= 29) add(Need.Motion)
         if (mission == Mission.Spot || mission == Mission.Photo) add(Need.Camera)
     }

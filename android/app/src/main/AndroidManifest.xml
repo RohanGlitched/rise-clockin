@@ -54,7 +54,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="rise" android:host="join" />
             </intent-filter>
-            <intent-filter>
+            <!-- autoVerify lets Android 12+ check /.well-known/assetlinks.json and open invite links straight in Rise. -->
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />

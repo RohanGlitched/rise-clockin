@@ -1,5 +1,9 @@
 {
-  "rewrites": [{ "source": "/join/:address", "destination": "/join.html" }],
+  "rewrites": [
+    { "source": "/join/:address", "destination": "/join.html" },
+    { "source": "/join", "destination": "/join.html" },
+    { "source": "/favicon.ico", "destination": "/icon.png" }
+  ],
   "headers": [
     { "source": "/(.*)", "headers": [{ "key": "X-Content-Type-Options", "value": "nosniff" }] },
     { "source": "/.well-known/assetlinks.json", "headers": [{ "key": "Content-Type", "value": "application/json" }] }
