@@ -214,7 +214,7 @@ private fun Morning(direct: Boolean, setBrightness: (Float) -> Unit, onStamp: ()
                     Stage.Sunrise -> SunriseStage(alarm.wakeAt, alarm.rehearsal, ::startMission)
                     Stage.Ringing -> RingingStage(alarm.rehearsal, ::startMission)
                     Stage.Mission -> MissionStage(mission, profile.spotCode, switching, { switching = it }, { mission = it; switching = false; trace = app.rise.clockin.ai.ProofTrace() }, ::clockIn, trace)
-                    Stage.Signing -> SigningStage()
+                    Stage.Signing -> SigningStage(alarm.rehearsal)
                     Stage.Stamped -> StampedStage(result!!, onStamp, onClose, proof)
                     Stage.Failed -> FailedStage(error ?: "Clock-in failed.", ::clockIn, onClose)
                 }
@@ -342,11 +342,15 @@ private fun ColumnScope.MissionStage(
 }
 
 @Composable
-private fun ColumnScope.SigningStage() {
+private fun ColumnScope.SigningStage(rehearsal: Boolean) {
     Spacer(Modifier.weight(1f))
-    Text("Clocking you in", style = RiseType.title, color = Rise.Ivory)
+    Text(if (rehearsal) "Stamping your card" else "Clocking you in", style = RiseType.title, color = Rise.Ivory)
     Spacer(Modifier.height(8.dp))
-    Text("Approve it in your wallet. Solana records the exact second you made it.", style = RiseType.body, color = Rise.Ivory.copy(alpha = 0.85f))
+    Text(
+        if (rehearsal) "A rehearsal stays on your phone. On a pact morning, this is where you approve the clock-in in your wallet."
+        else "Approve it in your wallet. Solana records the exact second you made it.",
+        style = RiseType.body, color = Rise.Ivory.copy(alpha = 0.85f),
+    )
     Spacer(Modifier.weight(1.4f))
 }
 

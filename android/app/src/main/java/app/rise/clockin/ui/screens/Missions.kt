@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -320,11 +321,16 @@ fun PhotoMission(onDone: () -> Unit, modifier: Modifier = Modifier, minConfidenc
     val hasCamera = context.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
     if (!hasCamera) { MissingSensor("Rise needs the camera for this mission. Allow it in You, or switch mission."); return }
     val match = seen.firstOrNull { it.first in MORNING_LABELS && it.second >= minConfidence }
-    LaunchedEffect(match != null) {
-        if (match == null) { held = 0f; return@LaunchedEffect }
-        while (held < 1f && !finished) { delay(100); held += 0.1f / 1.2f }
+    val matching by rememberUpdatedState(match != null)
+    // Hold a morning scene for 3 seconds; a stray frame slows the fill instead of resetting it.
+    LaunchedEffect(Unit) {
+        while (held < 1f && !finished) {
+            delay(100)
+            held = if (matching) held + 0.1f / 3f else (held - 0.05f).coerceAtLeast(0f)
+        }
         if (!finished) { finished = true; haptic.performHapticFeedback(HapticFeedbackType.LongPress); done() }
     }
+    val fill by animateFloatAsState(held, label = "hold")
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier.fillMaxWidth(0.8f).aspectRatio(1f).clip(RoundedCornerShape(28.dp))
@@ -388,7 +394,19 @@ fun PhotoMission(onDone: () -> Unit, modifier: Modifier = Modifier, minConfidenc
                 ) { Text("$label ${(conf * 100).toInt()}%", style = RiseType.small, color = if (ok) Rise.Moss else Rise.Ivory) }
             }
         }
+        Spacer(Modifier.height(14.dp))
+        // How long the scene has been held.
+        Box(Modifier.fillMaxWidth(0.8f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(Rise.Ivory.copy(alpha = 0.15f))) {
+            Box(Modifier.fillMaxWidth(fill).fillMaxHeight().background(Rise.Moss))
+        }
         Spacer(Modifier.height(12.dp))
-        Text(if (match != null) "That's the morning. Hold it…" else "Show me daylight, a window or your coffee.", style = RiseType.heading, color = Rise.Ivory)
+        Text(
+            when {
+                match != null -> "That's the morning. Hold it…"
+                fill > 0f -> "Keep it in view…"
+                else -> "Show me daylight, a window or your coffee."
+            },
+            style = RiseType.heading, color = Rise.Ivory,
+        )
     }
 }

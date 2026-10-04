@@ -104,7 +104,14 @@ object WakeCoach {
         val rate = (slipsList.sum() + 0.6) / (slipsList.size + 2.0)
         val x = features(m.target(pv.pact, next), prev, rate, true)
         val risk = sigmoid(x.indices.sumOf { w[it] * x[it] })
-        val contrib = (1 until x.size).map { i -> CoachFactor(names[i], w[i] * x[i]) }.filter { abs(it.weight) > 0.05 }.sortedByDescending { abs(it.weight) }
+        // Only explain with what we actually know: without past mornings of yours, the
+        // "last morning" and "slip rate" inputs are just the prior, so they aren't reasons.
+        val personal = setOf(2, 3)
+        val contrib = (1 until x.size)
+            .filter { i -> past.isNotEmpty() || i !in personal }
+            .map { i -> CoachFactor(names[i], w[i] * x[i]) }
+            .filter { abs(it.weight) > 0.05 }
+            .sortedByDescending { abs(it.weight) }
 
         val difficulty = when {
             risk >= 0.55 -> Difficulty.Tough
