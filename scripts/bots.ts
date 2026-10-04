@@ -34,7 +34,7 @@ async function main() {
   for (const { publicKey, account: m } of members) {
     const rider = riders.get(m.owner.toBase58());
     const p = pactBy.get(m.pact.toBase58());
-    if (!rider || !p) continue;
+    if (!rider || !p || p.daySecs !== 86_400) continue; // only daily pacts; scripted demo pacts run themselves
     const { r, kp } = rider;
     const start = p.startTs.toNumber();
     for (let d = m.firstDay; d < p.days; d++) {

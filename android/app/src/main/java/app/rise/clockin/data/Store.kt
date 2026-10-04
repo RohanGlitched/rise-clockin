@@ -31,6 +31,7 @@ enum class Mission(val id: Int, val title: String, val line: String) {
     Light(0, "Find the light", "Open the curtains or step outside until the light meter fills."),
     Walk(1, "Walk it off", "Take 30 steps. The alarm counts them."),
     Spot(2, "Scan your wake spot", "Scan the code you stuck by the kettle or the bathroom mirror."),
+    Photo(3, "Show the morning", "Point the camera at daylight, a window or your coffee. On-device AI checks it."),
     ;
     companion object { fun of(id: Int) = entries.firstOrNull { it.id == id } ?: Light }
 }
@@ -78,6 +79,9 @@ object Store {
 
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state.asStateFlow()
+    private val _coach = MutableStateFlow<app.rise.clockin.ai.CoachReport?>(null)
+    /** Rise Coach's latest prediction, retrained on the phone after every refresh. */
+    val coach: StateFlow<app.rise.clockin.ai.CoachReport?> = _coach.asStateFlow()
     private val _profile = MutableStateFlow(Profile())
     val profile: StateFlow<Profile> = _profile.asStateFlow()
 
@@ -168,6 +172,9 @@ object Store {
                     loading = false, loadedOnce = true,
                 )
             }
+            val report = withContext(Dispatchers.Default) { app.rise.clockin.ai.WakeCoach.report(views, address, now) }
+            app.rise.clockin.ai.WakeCoach.current = report
+            _coach.value = report
         } catch (e: Exception) {
             _state.update { it.copy(loading = false, loadedOnce = true, error = RiseProgram.explain(e)) }
         }
@@ -266,13 +273,14 @@ object Store {
     fun openForClockIn(now: Long = System.currentTimeMillis() / 1000): List<PactView> =
         state.value.pacts.filter { v -> v.me?.openDay(v.pact, now) != null }
 
-    suspend fun clockIn(mission: Mission, sender: ActivityResultSender?): ClockInResult {
+    suspend fun clockIn(mission: Mission, sender: ActivityResultSender?, proof: app.rise.clockin.ai.ProofScore? = null): ClockInResult {
         refresh()
         val now = System.currentTimeMillis() / 1000
         val open = openForClockIn(now)
         if (open.isEmpty()) return ClockInResult(null, now, emptyList(), rehearsal = true)
         val owner = PublicKey(wallet.address!!)
-        val sig = wallet.send(open.map { RiseProgram.clockIn(owner, PublicKey(it.pact.address), mission.id) }, sender)
+        val missionByte = proof?.let { app.rise.clockin.ai.ProofTrace.encode(mission.id, it) } ?: mission.id
+        val sig = wallet.send(open.map { RiseProgram.clockIn(owner, PublicKey(it.pact.address), missionByte) }, sender)
         refresh()
         val ids = open.map { it.pact.address }.toSet()
         return ClockInResult(sig, now, state.value.pacts.filter { it.pact.address in ids }, rehearsal = false)

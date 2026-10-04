@@ -11,7 +11,9 @@
 [![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7F52FF?logo=kotlin&logoColor=white)](android/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-ffd166.svg)](LICENSE)
 
-**[Download the APK](https://rise-clockin.vercel.app/rise.apk)** · **[Website & live pacts](https://rise-clockin.vercel.app)** · **[Program on Explorer](https://explorer.solana.com/address/6kQL7PccHpE7yUrsq5TgxFgQc7K7FVbUJShRUPbWfCdS?cluster=devnet)**
+**[Download the APK](https://rise-clockin.vercel.app/rise.apk)** · **[Website & live pacts](https://rise-clockin.vercel.app)** · **[Program on Explorer](https://explorer.solana.com/address/6kQL7PccHpE7yUrsq5TgxFgQc7K7FVbUJShRUPbWfCdS?cluster=devnet)** · **[Pitch deck](https://rise-clockin.vercel.app/rise-pitch-deck.pdf)**
+
+**[Verify it yourself](VERIFY.md)** · **[Settlement proof on devnet](docs/SETTLEMENT.md)** · **[Security & anti-cheat](SECURITY.md)**
 
 </div>
 
@@ -53,6 +55,20 @@ Snooze buttons win because nothing is at stake. Rise turns waking up into a dail
 <img src="docs/strip-setup.webp" alt="Welcome screen, the sun-dial wake time picker, mission choice, and the Today screen" width="100%">
 
 Connect a wallet (Seed Vault on Seeker, Phantom, Solflare) or try it instantly with a built-in practice wallet. Pick a name and a sign, drag the sun around a 24-hour sky to set your wake time, choose a mission, and grab test SKR with one tap. Devnet SOL for fees is topped up automatically.
+
+<br>
+
+## Rise AI, on the device
+
+Three models run on the phone. Nothing leaves it.
+
+| | What it does |
+| --- | --- |
+| **Rise Coach** | A logistic-regression model trained on the phone from the public time cards of every pact you're in (every member's mornings are on chain), then weighted toward your own history. Features: weekend, slipped yesterday, slip rate, how early the wake time is, and you-vs-your-pact. It predicts tomorrow's chance you oversleep and sets the mission difficulty: **Gentle** (20 steps, 350 lux, 5-min sunrise), **Normal** (30, 500, 10) or **Tough** (45, 800, 15), and says why. |
+| **Show the morning** | A fourth mission: the camera feeds ML Kit's on-device image labeler, and the alarm stops only when it sees a morning scene (daylight, a window, the kitchen, your coffee) above the coach's confidence threshold. |
+| **Proof anomaly scoring** | Every mission records a sensor trace. Real sensors are noisy; spoofed ones come in exact steps or metronome-perfect strides. The score (high / medium / low) is **written on chain with the clock-in** in the `mission` byte, so a pact sees how each morning was proven. |
+
+Code: [`ai/WakeCoach.kt`](android/app/src/main/java/app/rise/clockin/ai/WakeCoach.kt), [`ai/ProofAnalyzer.kt`](android/app/src/main/java/app/rise/clockin/ai/ProofAnalyzer.kt), [`PhotoMission`](android/app/src/main/java/app/rise/clockin/ui/screens/Missions.kt).
 
 <br>
 

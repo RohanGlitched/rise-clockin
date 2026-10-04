@@ -38,7 +38,9 @@ object AlarmScheduler {
         cancel(context)
         if (!p.alarmOn || !p.onboarded) return
         val wakeAt = nextWake(p)
-        set(context, wakeAt - p.sunriseLead * 60_000L, wakeAt, rehearsal = false)
+        // Rise Coach can ask for a longer sunrise when tomorrow looks risky.
+        val lead = maxOf(p.sunriseLead, app.rise.clockin.ai.currentDifficulty().sunriseLead.takeIf { app.rise.clockin.ai.WakeCoach.current != null } ?: 0)
+        set(context, wakeAt - lead * 60_000L, wakeAt, rehearsal = false)
     }
 
     /**
@@ -56,10 +58,7 @@ object AlarmScheduler {
 
     private fun set(context: Context, fireAt: Long, wakeAt: Long, rehearsal: Boolean, requestCode: Int = REQ) {
         val am = context.getSystemService(AlarmManager::class.java)
-        val intent = Intent(context, AlarmReceiver::class.java)
-            .putExtra(EXTRA_WAKE_AT, wakeAt)
-            .putExtra(EXTRA_REHEARSAL, rehearsal)
-        val op = PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val op = operation(context, requestCode, PendingIntent.FLAG_UPDATE_CURRENT, wakeAt, rehearsal)!!
         val show = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         // The trigger is the start of the sunrise; the service rings at wakeAt.
         if (canScheduleExact(context)) {
@@ -71,7 +70,17 @@ object AlarmScheduler {
 
     fun cancel(context: Context) {
         val am = context.getSystemService(AlarmManager::class.java)
-        val op = PendingIntent.getBroadcast(context, REQ, Intent(context, AlarmReceiver::class.java), PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)
-        op?.let { am.cancel(it) }
+        operation(context, REQ, PendingIntent.FLAG_NO_CREATE)?.let { am.cancel(it) }
+    }
+
+    /**
+     * The alarm starts the alarm service directly rather than going through a broadcast:
+     * on slow or busy phones the broadcast queue can hold an alarm back for minutes.
+     */
+    private fun operation(context: Context, requestCode: Int, flags: Int, wakeAt: Long? = null, rehearsal: Boolean = false): PendingIntent? {
+        val intent = Intent(context, AlarmService::class.java)
+        if (wakeAt != null) intent.putExtra(EXTRA_WAKE_AT, wakeAt).putExtra(EXTRA_REHEARSAL, rehearsal)
+        return if (Build.VERSION.SDK_INT >= 26) PendingIntent.getForegroundService(context, requestCode, intent, flags or PendingIntent.FLAG_IMMUTABLE)
+        else PendingIntent.getService(context, requestCode, intent, flags or PendingIntent.FLAG_IMMUTABLE)
     }
 }

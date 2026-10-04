@@ -28,7 +28,7 @@ enum class Need(val title: String, val why: String) {
     ExactAlarms("Alarms and reminders", "So Rise rings at your exact wake time."),
     FullScreen("Full-screen alarm", "So the alarm takes over the screen like a clock app."),
     Motion("Physical activity", "So the Walk it off mission can count your steps."),
-    Camera("Camera", "So you can scan your wake spot."),
+    Camera("Camera", "So the camera missions can see your wake spot or the morning."),
 }
 
 object Perms {
@@ -59,7 +59,7 @@ object Perms {
         add(Need.Notifications); add(Need.ExactAlarms)
         if (Build.VERSION.SDK_INT >= 34) add(Need.FullScreen)
         if (mission == Mission.Walk && Build.VERSION.SDK_INT >= 29) add(Need.Motion)
-        if (mission == Mission.Spot) add(Need.Camera)
+        if (mission == Mission.Spot || mission == Mission.Photo) add(Need.Camera)
     }
 
     private fun has(context: Context, p: String) = ContextCompat.checkSelfPermission(context, p) == PackageManager.PERMISSION_GRANTED

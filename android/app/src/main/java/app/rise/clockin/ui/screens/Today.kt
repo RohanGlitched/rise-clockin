@@ -95,6 +95,7 @@ fun TodayTab(nav: Nav) {
     val nextWake = AlarmScheduler.nextWake(profile) / 1000
     val streak = state.pacts.maxOfOrNull { it.me?.streak ?: 0 } ?: 0
     val finishedUnclaimed = state.pacts.filter { it.pact.isOver(now) && it.me?.claimed == false }
+    val coach by Store.coach.collectAsState()
 
     SkyBackground(dawnForTime(), horizon = 0.97f, sunX = 0.78f) {
         Column(
@@ -131,6 +132,10 @@ fun TodayTab(nav: Nav) {
             if (streak > 0) {
                 Spacer(Modifier.height(14.dp))
                 StreakPill(streak)
+            }
+            coach?.let { c ->
+                Spacer(Modifier.height(18.dp))
+                CoachPanel(c)
             }
 
             // Window open right now: the most important thing on the screen.
@@ -236,4 +241,53 @@ private fun NoPactYet(nav: Nav, suggestion: PactView?) {
 fun CardSkeleton() {
     val a = rememberInfiniteTransition(label = "sk").animateFloat(0.25f, 0.45f, infiniteRepeatable(tween(800), RepeatMode.Reverse), label = "a")
     Box(Modifier.fillMaxWidth().height(330.dp).alpha(a.value).clip(CardShape).background(Rise.Manila).semantics { contentDescription = "Loading your time card" })
+}
+
+
+/** Rise Coach: tomorrow's predicted risk, why, and the difficulty it chose. */
+@Composable
+fun CoachPanel(c: app.rise.clockin.ai.CoachReport) {
+    var open by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    val pct = (c.risk * 100).toInt()
+    val tone = when (c.difficulty) {
+        app.rise.clockin.ai.Difficulty.Tough -> Rise.Rose
+        app.rise.clockin.ai.Difficulty.Gentle -> Rise.Moss
+        else -> Rise.Sun
+    }
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Rise.NightDeep.copy(alpha = 0.5f))
+            .clickable(role = Role.Button) { open = !open }.padding(18.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Rise Coach", style = RiseType.bodyStrong, color = Rise.Sun)
+            Spacer(Modifier.weight(1f))
+            Box(Modifier.clip(RoundedCornerShape(12.dp)).background(tone.copy(alpha = 0.2f)).padding(horizontal = 10.dp, vertical = 4.dp)) {
+                Text("Tomorrow: ${c.difficulty.label}", style = RiseType.small, color = tone)
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text("$pct%", style = RiseType.amount.copy(fontSize = androidx.compose.ui.unit.TextUnit(34f, androidx.compose.ui.unit.TextUnitType.Sp)), color = Rise.Ivory)
+            Spacer(Modifier.width(8.dp))
+            Text("chance you oversleep tomorrow", style = RiseType.small, color = Rise.Mist, modifier = Modifier.padding(bottom = 6.dp))
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(c.headline, style = RiseType.body, color = Rise.Ivory.copy(alpha = 0.9f))
+        if (open) {
+            Spacer(Modifier.height(10.dp))
+            c.factors.forEach { f ->
+                Text("${if (f.weight > 0) "Raises" else "Lowers"} risk: ${f.text}", style = RiseType.small, color = Rise.Mist)
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Mission: ${c.difficulty.steps} steps, ${c.difficulty.lux} lux of light or ${(c.difficulty.visionConfidence * 100).toInt()}% vision match. Sunrise starts ${c.difficulty.sunriseLead} min early.",
+                style = RiseType.small, color = Rise.Ivory.copy(alpha = 0.8f),
+            )
+            Spacer(Modifier.height(6.dp))
+            Text("Trained on this phone from ${c.trainedOn} mornings on your pacts' time cards, ${c.personalMornings} of them yours. Nothing leaves the device.", style = RiseType.tiny, color = Rise.Mist)
+        } else {
+            Spacer(Modifier.height(6.dp))
+            Text("Tap to see why", style = RiseType.tiny, color = Rise.Mist)
+        }
+    }
 }

@@ -91,6 +91,13 @@ fun MissionGlyph(m: Mission, modifier: Modifier = Modifier, color: Color = Rise.
                 }
                 foot(12 * s, 22 * s); foot(29 * s, 10 * s)
             }
+            Mission.Photo -> {
+                val st = Stroke(3.2f * s, cap = StrokeCap.Round)
+                drawRoundRect(color, Offset(8 * s, 15 * s), Size(36 * s, 26 * s), androidx.compose.ui.geometry.CornerRadius(5 * s), style = st)
+                drawRect(color, Offset(18 * s, 10 * s), Size(14 * s, 6 * s))
+                drawCircle(color, 7 * s, Offset(26 * s, 28 * s), style = st)
+                drawCircle(color, 2.2f * s, Offset(38 * s, 20 * s))
+            }
             Mission.Spot -> {
                 val st = Stroke(3.2f * s, cap = StrokeCap.Round)
                 val l = 12 * s; val o = 8 * s; val e = w - o
@@ -131,7 +138,8 @@ private fun MissionRing(progress: Float, big: String, small: String, modifier: M
  * A bedside lamp gives ~100 lux; open curtains or a lit bathroom easily pass.
  */
 @Composable
-fun LightMission(onDone: () -> Unit, modifier: Modifier = Modifier) {
+fun LightMission(onDone: () -> Unit, modifier: Modifier = Modifier, trace: app.rise.clockin.ai.ProofTrace? = null, targetLux: Int = 500) {
+    val TARGET_LUX = targetLux
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     var lux by remember { mutableFloatStateOf(0f) }
@@ -142,7 +150,7 @@ fun LightMission(onDone: () -> Unit, modifier: Modifier = Modifier) {
     DisposableEffect(sensor) {
         val sm = context.getSystemService(SensorManager::class.java)
         val l = object : SensorEventListener {
-            override fun onSensorChanged(e: SensorEvent) { lux = e.values[0] }
+            override fun onSensorChanged(e: SensorEvent) { lux = e.values[0]; trace?.lux(e.values[0]) }
             override fun onAccuracyChanged(s: Sensor?, a: Int) {}
         }
         sm.registerListener(l, sensor, SensorManager.SENSOR_DELAY_UI)
@@ -171,13 +179,13 @@ fun LightMission(onDone: () -> Unit, modifier: Modifier = Modifier) {
         )
     }
 }
-private const val TARGET_LUX = 500
+
 
 // ------------------------------------------------------------------ Walk it off
 
 /** Counts 30 steps with the step detector, or the accelerometer when there isn't one. */
 @Composable
-fun WalkMission(onDone: () -> Unit, modifier: Modifier = Modifier, goal: Int = 30) {
+fun WalkMission(onDone: () -> Unit, modifier: Modifier = Modifier, goal: Int = 30, trace: app.rise.clockin.ai.ProofTrace? = null) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     var steps by remember { mutableIntStateOf(0) }
@@ -187,20 +195,24 @@ fun WalkMission(onDone: () -> Unit, modifier: Modifier = Modifier, goal: Int = 3
         val detector = sm.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
         val accel = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         var lastPeak = 0L
+        val usingDetectorFlag = detector != null && context.checkSelfPermission(android.Manifest.permission.ACTIVITY_RECOGNITION) == android.content.pm.PackageManager.PERMISSION_GRANTED
         var smooth = 9.8f
         val l = object : SensorEventListener {
             override fun onSensorChanged(e: SensorEvent) {
-                if (e.sensor.type == Sensor.TYPE_STEP_DETECTOR) { steps++; return }
+                if (e.sensor.type == Sensor.TYPE_STEP_DETECTOR) { steps++; trace?.step(); return }
                 val g = sqrt(e.values[0] * e.values[0] + e.values[1] * e.values[1] + e.values[2] * e.values[2])
+                trace?.accel(g)
+                if (usingDetectorFlag) return
                 smooth = smooth * 0.8f + g * 0.2f
                 val now = System.currentTimeMillis()
-                if (smooth > 11.2f && now - lastPeak > 330) { lastPeak = now; steps++ }
+                if (smooth > 11.2f && now - lastPeak > 330) { lastPeak = now; steps++; trace?.step() }
             }
             override fun onAccuracyChanged(s: Sensor?, a: Int) {}
         }
         val usingDetector = detector != null && context.checkSelfPermission(android.Manifest.permission.ACTIVITY_RECOGNITION) == android.content.pm.PackageManager.PERMISSION_GRANTED
         if (usingDetector) sm.registerListener(l, detector, SensorManager.SENSOR_DELAY_FASTEST)
-        else accel?.let { sm.registerListener(l, it, SensorManager.SENSOR_DELAY_GAME) }
+        // The accelerometer always runs: it counts steps without a detector and feeds the proof check.
+        accel?.let { sm.registerListener(l, it, SensorManager.SENSOR_DELAY_GAME) }
         onDispose { sm.unregisterListener(l) }
     }
     LaunchedEffect(steps) {
@@ -219,7 +231,7 @@ fun WalkMission(onDone: () -> Unit, modifier: Modifier = Modifier, goal: Int = 3
 /** On-device QR scan of the wake-spot code (ML Kit); nothing leaves the phone. */
 @OptIn(ExperimentalGetImage::class)
 @Composable
-fun SpotMission(expected: String, onDone: () -> Unit, modifier: Modifier = Modifier) {
+fun SpotMission(expected: String, onDone: () -> Unit, modifier: Modifier = Modifier, trace: app.rise.clockin.ai.ProofTrace? = null) {
     val context = LocalContext.current
     val owner = LocalLifecycleOwner.current
     val haptic = LocalHapticFeedback.current
@@ -249,6 +261,7 @@ fun SpotMission(expected: String, onDone: () -> Unit, modifier: Modifier = Modif
                                     val values = codes.mapNotNull { it.rawValue }
                                     if (values.any { it == expected } && !finished) {
                                         finished = true
+                                        trace?.scanned()
                                         ContextCompat.getMainExecutor(ctx).execute { haptic.performHapticFeedback(HapticFeedbackType.LongPress); done() }
                                     } else if (values.isNotEmpty()) wrong = true
                                 }
@@ -278,3 +291,93 @@ private fun MissingSensor(text: String) {
 }
 
 fun Context.hasSensor(type: Int) = getSystemService(SensorManager::class.java).getDefaultSensor(type) != null
+
+
+// ------------------------------------------------------------------ Show the morning (on-device AI)
+
+/** Labels that mean "you're up and somewhere morning-ish": daylight, outdoors, or breakfast things. */
+private val MORNING_LABELS = setOf(
+    "Sky", "Cloud", "Sunset", "Window", "Tree", "Plant", "Flower", "Building", "Skyscraper", "Road",
+    "Cup", "Coffee", "Tableware", "Mug", "Bottle", "Sink", "Bathroom", "Kitchen", "Food", "Bread",
+)
+
+/**
+ * The camera has to see the morning. ML Kit's on-device image labeler classifies each frame;
+ * the mission passes when a morning label holds above the coach's confidence for a moment.
+ */
+@OptIn(ExperimentalGetImage::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun PhotoMission(onDone: () -> Unit, modifier: Modifier = Modifier, minConfidence: Float = 0.7f, trace: app.rise.clockin.ai.ProofTrace? = null) {
+    val context = LocalContext.current
+    val owner = LocalLifecycleOwner.current
+    val haptic = LocalHapticFeedback.current
+    val done by rememberUpdatedState(onDone)
+    var seen by remember { mutableStateOf<List<Pair<String, Float>>>(emptyList()) }
+    var held by remember { mutableFloatStateOf(0f) }
+    var finished by remember { mutableStateOf(false) }
+    val hasCamera = context.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    if (!hasCamera) { MissingSensor("Rise needs the camera for this mission. Allow it in You, or switch mission."); return }
+    val match = seen.firstOrNull { it.first in MORNING_LABELS && it.second >= minConfidence }
+    LaunchedEffect(match != null) {
+        if (match == null) { held = 0f; return@LaunchedEffect }
+        while (held < 1f && !finished) { delay(100); held += 0.1f / 1.2f }
+        if (!finished) { finished = true; haptic.performHapticFeedback(HapticFeedbackType.LongPress); done() }
+    }
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            Modifier.fillMaxWidth(0.8f).aspectRatio(1f).clip(RoundedCornerShape(28.dp))
+                .border(3.dp, if (match != null) Rise.Moss else Rise.Sun, RoundedCornerShape(28.dp)),
+        ) {
+            AndroidView(
+                factory = { ctx ->
+                    val view = PreviewView(ctx)
+                    val providerFuture = ProcessCameraProvider.getInstance(ctx)
+                    providerFuture.addListener({
+                        val provider = providerFuture.get()
+                        val preview = Preview.Builder().build().also { it.surfaceProvider = view.surfaceProvider }
+                        val labeler = com.google.mlkit.vision.label.ImageLabeling.getClient(
+                            com.google.mlkit.vision.label.defaults.ImageLabelerOptions.Builder().setConfidenceThreshold(0.3f).build(),
+                        )
+                        val analysis = ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build()
+                        analysis.setAnalyzer(Executors.newSingleThreadExecutor()) { proxy ->
+                            val img = proxy.image
+                            if (img == null || finished) { proxy.close(); return@setAnalyzer }
+                            // A bitmap keeps colour conversion consistent across camera HALs (some emit odd YUV strides).
+                            val frame = runCatching { InputImage.fromBitmap(proxy.toBitmap(), proxy.imageInfo.rotationDegrees) }
+                                .getOrElse { InputImage.fromMediaImage(img, proxy.imageInfo.rotationDegrees) }
+                            labeler.process(frame)
+                                .addOnFailureListener { e -> android.util.Log.w("RiseVision", "labeling failed", e) }
+                                .addOnSuccessListener { labels ->
+                                    android.util.Log.d("RiseVision", "labels: " + labels.joinToString { it.text + "=" + it.confidence })
+                                    val top = labels.sortedByDescending { it.confidence }.take(4).map { it.text to it.confidence }
+                                    top.filter { it.first in MORNING_LABELS }.forEach { trace?.vision(it.first, it.second) }
+                                    ContextCompat.getMainExecutor(ctx).execute { seen = top }
+                                }
+                                .addOnCompleteListener { proxy.close() }
+                        }
+                        provider.unbindAll()
+                        provider.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
+                    }, ContextCompat.getMainExecutor(ctx))
+                    view
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+        // What the on-device model sees, live.
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+        ) {
+            seen.forEach { (label, conf) ->
+                val ok = label in MORNING_LABELS && conf >= minConfidence
+                Box(
+                    Modifier.clip(RoundedCornerShape(14.dp)).background(if (ok) Rise.Moss.copy(alpha = 0.25f) else Rise.Ivory.copy(alpha = 0.1f))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                ) { Text("$label ${(conf * 100).toInt()}%", style = RiseType.small, color = if (ok) Rise.Moss else Rise.Ivory) }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(if (match != null) "That's the morning. Hold it…" else "Show me daylight, a window or your coffee.", style = RiseType.heading, color = Rise.Ivory)
+    }
+}

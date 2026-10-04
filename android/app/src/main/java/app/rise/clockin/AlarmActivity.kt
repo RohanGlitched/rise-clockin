@@ -193,11 +193,15 @@ private fun Morning(direct: Boolean, setBrightness: (Float) -> Unit, onStamp: ()
     // Sunrise lamp: the screen brightens with the sky.
     LaunchedEffect(stage, dawn) { setBrightness(if (stage == Stage.Sunrise) (0.02f + dawn).coerceAtMost(1f) else -1f) }
 
-    fun startMission() { AlarmService.enterMission(context); stage = Stage.Mission }
+    // What the sensors saw during the mission, scored for the on-chain proof.
+    var trace by remember { mutableStateOf(app.rise.clockin.ai.ProofTrace()) }
+    var proof by remember { mutableStateOf<app.rise.clockin.ai.ProofScore?>(null) }
+    fun startMission() { AlarmService.enterMission(context); trace = app.rise.clockin.ai.ProofTrace(); stage = Stage.Mission }
     fun clockIn() {
+        if (proof == null) proof = trace.analyze(mission.id)
         stage = Stage.Signing; error = null
         scope.launch {
-            runCatching { Store.clockIn(mission, sender) }
+            runCatching { Store.clockIn(mission, sender, proof) }
                 .onSuccess { result = it; stage = Stage.Stamped; AlarmService.stop(context) }
                 .onFailure { error = RiseProgram.explain(it); stage = Stage.Failed }
         }
@@ -209,9 +213,9 @@ private fun Morning(direct: Boolean, setBrightness: (Float) -> Unit, onStamp: ()
                 when (s) {
                     Stage.Sunrise -> SunriseStage(alarm.wakeAt, alarm.rehearsal, ::startMission)
                     Stage.Ringing -> RingingStage(alarm.rehearsal, ::startMission)
-                    Stage.Mission -> MissionStage(mission, profile.spotCode, switching, { switching = it }, { mission = it; switching = false }, ::clockIn)
+                    Stage.Mission -> MissionStage(mission, profile.spotCode, switching, { switching = it }, { mission = it; switching = false; trace = app.rise.clockin.ai.ProofTrace() }, ::clockIn, trace)
                     Stage.Signing -> SigningStage()
-                    Stage.Stamped -> StampedStage(result!!, onStamp, onClose)
+                    Stage.Stamped -> StampedStage(result!!, onStamp, onClose, proof)
                     Stage.Failed -> FailedStage(error ?: "Clock-in failed.", ::clockIn, onClose)
                 }
             }
@@ -308,11 +312,15 @@ private fun SunSlider(label: String, onDone: () -> Unit, modifier: Modifier = Mo
 @Composable
 private fun ColumnScope.MissionStage(
     mission: Mission, spot: String, switching: Boolean, setSwitching: (Boolean) -> Unit,
-    onSwitch: (Mission) -> Unit, onDone: () -> Unit,
+    onSwitch: (Mission) -> Unit, onDone: () -> Unit, trace: app.rise.clockin.ai.ProofTrace,
 ) {
+    val level = app.rise.clockin.ai.currentDifficulty()
     Spacer(Modifier.height(24.dp))
     Text(mission.title, style = RiseType.title, color = Rise.Ivory)
     Text(mission.line, style = RiseType.body, color = Rise.Ivory.copy(alpha = 0.85f))
+    if (app.rise.clockin.ai.WakeCoach.current != null) {
+        Text("Rise Coach set today to ${level.label}.", style = RiseType.small, color = Rise.Sun, modifier = Modifier.padding(top = 6.dp))
+    }
     Spacer(Modifier.height(28.dp))
     if (switching) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -322,9 +330,10 @@ private fun ColumnScope.MissionStage(
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
             Box(Modifier.clip(RoundedCornerShape(32.dp)).background(Rise.Night.copy(alpha = 0.82f)).padding(24.dp)) {
                 when (mission) {
-                    Mission.Light -> LightMission(onDone, Modifier.fillMaxWidth())
-                    Mission.Walk -> WalkMission(onDone, Modifier.fillMaxWidth())
-                    Mission.Spot -> SpotMission(spot, onDone, Modifier.fillMaxWidth())
+                    Mission.Light -> LightMission(onDone, Modifier.fillMaxWidth(), trace, level.lux)
+                    Mission.Walk -> WalkMission(onDone, Modifier.fillMaxWidth(), level.steps, trace)
+                    Mission.Spot -> SpotMission(spot, onDone, Modifier.fillMaxWidth(), trace)
+                    Mission.Photo -> app.rise.clockin.ui.screens.PhotoMission(onDone, Modifier.fillMaxWidth(), level.visionConfidence, trace)
                 }
             }
         }
@@ -342,7 +351,7 @@ private fun ColumnScope.SigningStage() {
 }
 
 @Composable
-private fun ColumnScope.StampedStage(r: ClockInResult, onStamp: () -> Unit, onClose: () -> Unit) {
+private fun ColumnScope.StampedStage(r: ClockInResult, onStamp: () -> Unit, onClose: () -> Unit, proof: app.rise.clockin.ai.ProofScore?) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val t = Instant.ofEpochSecond(r.clockedAt).atZone(ZoneId.systemDefault())
     val first = r.pacts.firstOrNull()
@@ -379,6 +388,10 @@ private fun ColumnScope.StampedStage(r: ClockInResult, onStamp: () -> Unit, onCl
             Text("${skr(kept)} SKR kept for today", style = RiseType.heading, color = Rise.InkBlue)
             Spacer(Modifier.height(4.dp))
             Text(if (streak == 1) "First morning of your streak." else "$streak mornings in a row.", style = RiseType.body, color = Rise.InkBlue.copy(alpha = 0.8f))
+            proof?.let { pr ->
+                Spacer(Modifier.height(10.dp))
+                Text("${pr.summary}. Proof confidence: ${pr.confidence.label}, recorded on chain.", style = RiseType.small, color = Rise.InkBlue.copy(alpha = 0.75f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
             r.signature?.let { sig ->
                 TextAction("See the proof on Solana", { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Config.explorerTx(sig)))) }, color = Rise.InkRed)
             }
