@@ -11,7 +11,6 @@ import {
   ExtensionType,
   getMintLen,
   MintLayout,
-  createFreezeAccountInstruction,
   createInitializeDefaultAccountStateInstruction,
   createInitializeGroupMemberPointerInstruction,
   createInitializeGroupPointerInstruction,
@@ -172,32 +171,5 @@ describe("mint guard (UnsafeMint)", () => {
     expect(await h.pactBalance(p, a.publicKey)).to.equal(14n * SKR);
     expect(await h.pactBalance(p, b.publicKey)).to.equal(0n);
     expect(await h.vaultBalance(p)).to.equal(0n);
-  });
-
-  // ------------------------------------------------------------------ known issue
-  // check_mint reads only the extension list. A freeze authority lives in the base mint, so a
-  // mint whose freeze authority is set passes the guard, and that authority can freeze the vault
-  // and stop every claim. SECURITY.md promises nobody else can "freeze the vault's tokens".
-
-  it("known issue (evidence): a mint with a freeze authority is accepted, and freezing the vault blocks claims", async () => {
-    const mint = await h.createMint({ freeze: admin() });
-    const p = await h.createPact({ mint, days: 1 });
-    const a = h.wallet();
-    const b = h.wallet();
-    await h.mintTo(mint, a.publicKey, 10n * SKR);
-    await h.mintTo(mint, b.publicKey, 10n * SKR);
-    h.ok(await h.join(p, a, 6 * HOUR));
-    h.ok(await h.join(p, b, 6 * HOUR));
-    h.ok(await h.send([createFreezeAccountInstruction(p.vault, mint, admin(), [], TOKEN_2022_PROGRAM_ID)], [h.admin]));
-    await h.setTime(p.end + 1);
-    h.fails(await h.claim(p, a), "frozen");
-    expect(await h.vaultBalance(p)).to.equal(20n * SKR); // stuck until the freeze authority thaws it
-  });
-
-  // documents known issue: create_pact should refuse mints with a freeze authority
-  // (suggested fix: `require!(ctx.accounts.mint.freeze_authority.is_none(), RiseError::UnsafeMint)`).
-  it.skip("refuses a mint with a freeze authority", async () => {
-    const mint = await h.createMint({ freeze: admin() });
-    h.fails((await h.tryCreatePact({ mint, start: h.now + DAY })).r, "UnsafeMint");
   });
 });

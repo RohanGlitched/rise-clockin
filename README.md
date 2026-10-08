@@ -204,7 +204,7 @@ Deployed addresses (devnet):
 ```bash
 anchor build
 npm ci
-npm test            # 84 tests: windows to the second, payout conservation over hundreds of random pacts, every mint extension, authorisation
+npm test            # 82 tests: windows to the second, payout conservation over hundreds of random pacts, every mint extension, authorisation
 ```
 
 **Build the app** (JDK 21, Android SDK):
@@ -242,7 +242,7 @@ docs/               Screenshots and README artwork
 
 ## Testing
 
-**84 Bankrun tests** (`npm test`, about a minute) move Solana's clock through whole pacts:
+**82 Bankrun tests** (`npm test`, about a minute) move Solana's clock through whole pacts:
 
 - **Windows to the second:** opens exactly 30 minutes before the wake time, closes exactly at wake + grace, closed in between, one clock-in per window, the final window and the first claim second.
 - **Payout conservation:** 40 random pacts per run (261 members, 880 clock-ins on the default seed; `npm run test:fuzz` does 300) settle exactly by the formula and leave only rounding dust in the vault. Shortest and longest presets, nobody-woke refunds, everyone-kept, late joiners, double claims.
