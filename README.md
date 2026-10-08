@@ -250,8 +250,6 @@ docs/               Screenshots and README artwork
 - **Authorisation:** nobody can clock in, claim or redirect a payout for anyone else, across pacts or vaults.
 - **Settings, membership, faucet, events and a compute-unit snapshot** per instruction (clock_in is 18k CU).
 
-Two tests are intentionally pending as documented known issues; see the audit section of [SECURITY.md](SECURITY.md).
-
 CI runs these tests, builds and lints the Android app, and checks the web API on every push.
 
 <br>
