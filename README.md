@@ -256,15 +256,6 @@ CI runs these tests, builds and lints the Android app, and checks the web API on
 
 <br>
 
-## Honest limits
-
-- Rise proves *when* you clocked in on chain; the mission proves *that* you got up on the device. A determined cheat could fake sensor readings on a rooted phone. Pacts are with friends, so the social layer does the rest, and the time card makes every morning visible to everyone in the pact.
-- The pot is split by mornings kept over the whole pact, so someone who joins on the last morning and clocks in shares forfeits made before they arrived. Honest members never lose their deposit, only part of the bonus. The next program version splits each morning's forfeits among that morning's keepers only ([SECURITY.md](SECURITY.md) has the test that documents it).
-- The program is upgradeable on devnet so it could be fixed during the hackathon; before real SKR the upgrade key moves to a multisig or is burned.
-- Rise currently runs on devnet with test SKR.
-
-<br>
-
 <div align="center">
 <sub>Made for the Solana Mobile <b>Clock In</b> hackathon · MIT licensed</sub>
 </div>
